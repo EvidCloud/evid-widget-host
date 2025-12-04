@@ -1,9 +1,4 @@
-/*! both-controller v3.6.4 — Assistant no-FOUT, image prewarm, sticky review (mobile),
-    smooth animations, Google icon safe, and PERSISTED rotation across pages (fixed gap resume).
-    + Dismiss persistence: remember index on ✕, 45s cooldown across pages.
-    + "קרא עוד" pill for multi-line reviews (true multi-line truncation), with pause/resume timer.
-    + Skip reviews that have no text.
-*/
+/*! both-controller v4.0.0 — New Glassmorphism Design + Rubik Font */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -18,13 +13,8 @@
   var SHOW_MS   = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))       || 15000);
   var GAP_MS    = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))        || 6000);
   var INIT_MS   = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
-
-  // --- Dismiss persistence (new)
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
-
   var DEBUG = (((scriptEl && scriptEl.getAttribute("data-debug")) || "0") === "1");
-  var BADGE = (((scriptEl && scriptEl.getAttribute("data-badge")) || "1") === "1");
-  function log(){ if (DEBUG) { var a=["[both-controller v3.6.4]"]; for (var i=0;i<arguments.length;i++) a.push(arguments[i]); console.log.apply(console,a);} }
 
   if (!REVIEWS_EP && !PURCHASES_EP) {
     root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Missing endpoints.</div>';
@@ -32,127 +22,141 @@
   }
 
   /* =========================
-     Assistant font: no FOUT
+     Font: Rubik (No FOUT logic kept simple for Rubik)
      ========================= */
-  var ASSIST_HREF = 'https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=block';
-  function ensureAssistantInHead(){
+  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
+  function ensureFontInHead(){
     try{
-      if (!document.getElementById('asst-preconnect-goog')) {
-        var pc1=document.createElement('link'); pc1.id='asst-preconnect-goog';
-        pc1.rel='preconnect'; pc1.href='https://fonts.googleapis.com';
-        document.head.appendChild(pc1);
-      }
-      if (!document.getElementById('asst-preconnect-gstatic')) {
-        var pc2=document.createElement('link'); pc2.id='asst-preconnect-gstatic';
-        pc2.rel='preconnect'; pc2.href='https://fonts.gstatic.com'; pc2.crossOrigin='anonymous';
-        document.head.appendChild(pc2);
-      }
-      var link = document.getElementById('asst-font-css');
-      if (!link) {
-        link = document.createElement('link');
-        link.id = 'asst-font-css';
+      if (!document.getElementById('evid-rubik-font')) {
+        var link = document.createElement('link');
+        link.id = 'evid-rubik-font';
         link.rel = 'stylesheet';
-        link.href = ASSIST_HREF;
+        link.href = FONT_HREF;
         document.head.appendChild(link);
       }
-      return new Promise(function(resolve){
-        var done=false;
-        function finish(){ if(done) return; done=true;
-          try{
-            var p = document.fonts ? Promise.all([
-              document.fonts.load('400 14px "Assistant"'),
-              document.fonts.load('600 14px "Assistant"'),
-              document.fonts.load('700 14px "Assistant"'),
-              document.fonts.ready
-            ]) : Promise.resolve();
-            p.then(resolve).catch(resolve);
-          }catch(_){ resolve(); }
-        }
-        if (link.sheet) finish();
-        else {
-          link.addEventListener('load', finish, {once:true});
-          link.addEventListener('error', finish, {once:true});
-        }
-        setTimeout(finish, 2500);
-      });
+      return Promise.resolve(); // Assuming font loads fast enough or falls back gracefully
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles (no @import here) ========== */
+  /* ========== styles (The New Design) ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
-  + ':host, :host *, .wrap, .wrap *, .card, .card *{'
-  + '  font-family:"Assistant",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans Hebrew",Heebo,sans-serif!important;'
-  + '  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;'
+  + ':host, :host *, .wrap, .wrap * {'
+  + '  font-family:"Rubik",ui-sans-serif,system-ui,-apple-system,sans-serif!important;'
+  + '  box-sizing: border-box;'
   + '}'
-  + '.wrap{visibility:hidden;opacity:0;transition:opacity .15s ease;position:fixed;right:16px;left:auto;bottom:16px;z-index:2147483000;}'
+  + '.wrap{'
+  + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
+  + '  direction:rtl;'
+  + '  pointer-events:none;' /* Allow clicks through wrapper */
+  + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
-  /* Card */
-  + '.card{position:relative;width:370px;max-width:92vw;background:#fff;color:#0b1220;border-radius:18px;box-shadow:0 16px 40px rgba(2,6,23,.18);border:1px solid rgba(2,6,23,.06);overflow:visible;}'
-  + '.xbtn{position:absolute;top:10px;left:10px;appearance:none;border:0;background:#eef2f7;color:#111827;width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:.9;transition:transform .15s ease,filter .15s ease;box-shadow:0 1px 2px rgba(0,0,0,.06) inset;}'
-  + '.xbtn:hover{filter:brightness(.96);transform:translateY(-1px);opacity:1;} .xbtn:active{transform:translateY(0);}'
-
-  /* Reviews */
-  + '.row-r{display:grid;grid-template-columns:40px 1fr 24px;gap:12px;align-items:center;padding:12px 12px 8px;direction:rtl;}'
-  + '.avatar{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#eef2f7;display:block;border:1px solid rgba(2,6,23,.06);}'
-  + '.avatar-fallback{display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:40px;height:40px;border-radius:50%;}'
-  + '.meta{display:flex;flex-direction:column;gap:4px;}'
-  + '.name{font-weight:700;font-size:14px;line-height:1.2;}'
-  + '.body{padding:0 12px 12px;font-size:14px;line-height:1.35;direction:rtl;}'
-  + '.body.ltr{direction:ltr;text-align:left;}'
-  + '.body.clamped{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}'
-  + '.brand{display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:10px 12px;border-top:1px solid rgba(2,6,23,.07);font-size:12px;opacity:.95;direction:rtl;overflow:visible;}'
-  + '.gmark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;overflow:visible;}'
-  + '.gmark svg{width:18px;height:18px;display:block;overflow:visible;}'
-  + '.gstars{font-size:13px;letter-spacing:1px;color:#f5b50a;text-shadow:0 0 .5px rgba(0,0,0,.2);}'
-  + '.badgeText{margin-inline-start:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.9;}'
-  + '.badgeText .verified{color:#444;font-weight:600;}'
-  + '.badgeText .evid{color:#000;font-weight:700;display:inline-flex;align-items:center;gap:4px;}'
-  + '.badgeText .tick{font-size:12px;line-height:1;}'
-
-  /* Read-more pill */
-  + '.readmore-pill{position:absolute;top:0;right:92px;transform:translateY(-50%);background:#0f172a;color:#fff;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:600;border:none;cursor:pointer;box-shadow:0 8px 22px rgba(15,23,42,.4);white-space:nowrap;z-index:4;}'
-  + '.readmore-pill:hover{background:#020617;}'
-
-  /* Purchases (compact) */
-  + '.p-top{display:grid;grid-template-columns:1fr 168px;gap:12px;align-items:center;padding:13px 12px 6px;direction:ltr;}'
-  + '.ptext{grid-column:1;display:flex;flex-direction:column;gap:4px;align-items:stretch;direction:rtl;}'
-  + '.ptime-top{display:flex;align-items:center;gap:6px;justify-content:center;font-size:12.5px;color:#1f2937;opacity:.92;text-align:right;direction:rtl;margin:0;}'
-  + '.ptime-top svg{width:14px;height:14px;opacity:.95;display:block;}'
-  + '.psentence{max-width:100%;text-align:right;font-size:15px;line-height:1.35;margin:0;word-break:break-word;}'
-  + '.psentence .buyer{font-weight:700;}'
-  + '.psentence .prod{font-weight:700;color:#2578ff;}'
-  + '.pmedia{grid-column:2;justify-self:end;display:flex;align-items:center;justify-content:center;position:relative;}'
-  + '.pframe{position:relative;width:160px;height:116px;border-radius:14px;border:2px solid #dfe7f0;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}'
-  + '.pimg{width:100%;height:100%;object-fit:contain;background:#fff;display:block;}'
-  + '.pimg-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#475569;font-weight:700;background:#f1f5f9;}'
-  + '.hotcap{position:absolute;top:-12px;left:50%;transform:translateX(-50%);z-index:3;}'
-  + '.badge-hot{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font:700 12.5px/1.1 "Assistant",system-ui,-apple-system,Segoe UI,Heebo,Arial,sans-serif;color:#9a3412;background:#fff7ed;border:1px solid #fed7aa;box-shadow:0 1px 0 rgba(0,0,0,.04);white-space:nowrap;}'
-  + '.badge-hot svg{width:14px;height:14px}'
-  + '.pulse{animation:pulse 2.8s ease-in-out infinite}'
-  + '@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,0)}50%{box-shadow:0 0 0 8px rgba(249,115,22,.12)}}'
-  + '.p-foot{display:none!important;}'
+  /* Shared Card Styles (Glassmorphism) */
+  + '.card {'
+  + '  position: relative;'
+  + '  width: 340px; max-width: 90vw;'
+  + '  background: rgba(255, 255, 255, 0.93);'
+  + '  backdrop-filter: blur(20px) saturate(180%);'
+  + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
+  + '  border-radius: 16px;'
+  + '  border: 1px solid rgba(255, 255, 255, 0.8);'
+  + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.05);'
+  + '  overflow: hidden;'
+  + '  pointer-events: auto;' /* Re-enable clicks on card */
+  + '  transition: transform 0.3s ease;'
+  + '}'
+  + '.card:hover { transform: translateY(-5px); }'
 
   /* Animations */
-  + '.enter{animation:floatIn .42s cubic-bezier(.22,.61,.36,1) forwards;}'
-  + '.leave{animation:floatOut .36s cubic-bezier(.22,.61,.36,1) forwards;}'
-  + '@keyframes floatIn{0%{opacity:0;transform:translateY(10px) scale(.98);filter:blur(2px);}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0);}}'
-  + '@keyframes floatOut{0%{opacity:1;transform:translateY(0) scale(1);filter:blur(0);}100%{opacity:0;transform:translateY(8px) scale(.985);filter:blur(1px);}}'
+  + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
+  + '@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(50px); } }'
 
-  /* Mobile: reviews stick to bottom, purchases float */
-  + '@media (max-width:480px){'
-  + '  .wrap.sticky-review{right:0;left:0;bottom:0;padding:0 0 env(safe-area-inset-bottom,0);}'
-  + '  .wrap.sticky-review .card.review-card{width:100%;max-width:none;border-radius:16px 16px 0 0;margin:0;}'
-  + '  .row-r{padding:12px 10px 8px;}'
-  + '  .p-top{grid-template-columns:1fr 144px;padding:13px 10px 6px;gap:10px;}'
-  + '  .pframe{width:144px;height:104px;}'
-  + '  .hotcap{top:-10px;}'
-  + '  .card.review-card .readmore-pill{right:86px;top:0;transform:translateY(-50%);font-size:10px;padding:4px 8px;}'
-  + '  .body.clamped{-webkit-line-clamp:2;}'
+  /* Close Button */
+  + '.xbtn {'
+  + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
+  + '  background: #f1f5f9; border-radius: 50%; border: none;'
+  + '  display: flex; align-items: center; justify-content: center;'
+  + '  cursor: pointer; color: #94a3b8; font-size: 10px; z-index: 10;'
+  + '  opacity: 0; transition: opacity 0.2s;'
   + '}'
-  + '@media (min-width:720px){ .pframe{width:160px;height:116px;} }'
+  + '.card:hover .xbtn { opacity: 1; }'
+
+  /* --- Review Widget Specifics --- */
+  + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
+  + '.review-header { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }'
+  + '.user-profile { display: flex; align-items: center; gap: 10px; }'
+  + '.review-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7; }'
+  + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
+  + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
+  
+  /* Text & Read More */
+  + '.review-text {'
+  + '  font-size: 13px; line-height: 1.5; color: #374151; margin: 0;'
+  + '  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
+  + '  transition: all 0.3s ease;'
+  + '}'
+  + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
+  + '.read-more-btn {'
+  + '  font-size: 12px; color: #2563eb; font-weight: 700; cursor: pointer;'
+  + '  background: transparent!important; border: none; padding: 5px 0; align-self: flex-start;'
+  + '  outline: none!important;'
+  + '}'
+  + '.read-more-btn:hover { text-decoration: underline; }'
+
+  /* Footer */
+  + '.review-footer {'
+  + '  display: flex; justify-content: space-between; align-items: center;'
+  + '  border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px;'
+  + '}'
+  + '.stars-wrapper { display: flex; align-items: center; gap: 8px; }'
+  + '.stars { color: #d97706; font-size: 13px; letter-spacing: 1px; font-weight:bold; }'
+  + '.google-icon { width: 16px; height: 16px; opacity: 1; display:block; }'
+  + '.compact-badge {'
+  + '  background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px;'
+  + '  font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px;'
+  + '}'
+
+  /* --- Purchase Widget Specifics --- */
+  + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
+  + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
+  + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
+  + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
+  
+  + '.p-content {'
+  + '  flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column;'
+  + '  justify-content: center; gap: 2px; text-align: right; height: 100%;'
+  + '}'
+  + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
+  + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
+  + '.fomo-time { font-size: 11px; }'
+  + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
+  + '.product-highlight { font-weight: 500; color: #2563eb; }'
+  
+  + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
+  + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
+  + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; }'
+  + '.pulsing-dot::after {'
+  + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
+  + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
+  + '}'
+  + '.verified-badge {'
+  + '  font-size: 10px; color: #059669; background: rgba(16, 185, 129, 0.1);'
+  + '  padding: 2px 8px; border-radius: 4px; font-weight: 500; display: flex; align-items: center; gap: 3px;'
+  + '}'
+  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; animation: timerShrink 5s linear forwards; }'
+  
+  + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
+  + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
+  
+  /* Mobile sticky adjustments */
+  + '@media (max-width:480px){'
+  + '  .wrap.sticky-review { right:0; left:0; bottom:0; padding:0; width:100%; display:flex; justify-content:center; }'
+  + '  .card { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; border-bottom: none; }'
+  + '}'
   ;
   root.appendChild(style);
 
@@ -166,10 +170,7 @@
   function colorFromString(s){ s=s||""; for(var h=0,i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return "hsl("+(h%360)+" 70% 45%)"; }
   function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]);}); }
   function firstName(s){ s=String(s||"").trim(); var parts=s.split(/\s+/); return parts[0]||s; }
-
-  function normalizeSpaces(text){
-    return (text||"").replace(/\s+/g," ").trim();
-  }
+  function normalizeSpaces(text){ return (text||"").replace(/\s+/g," ").trim(); }
 
   function timeAgo(ts){
     try{ var d=new Date(ts);
@@ -187,9 +188,9 @@
   function renderAvatarPreloaded(name, url){
     var shell = renderMonogram(name);
     if(url){
-      var img = new Image(); img.width=40; img.height=40; img.decoding="async"; img.loading="eager";
-      img.onload=function(){ var tag=document.createElement("img"); tag.className="avatar"; tag.alt=""; tag.width=40; tag.height=40; tag.decoding="async"; tag.loading="eager"; tag.src=url; shell.replaceWith(tag); };
-      img.onerror=function(){}; img.src=url;
+      var img = new Image(); img.decoding="async"; img.loading="eager";
+      img.onload=function(){ var tag=document.createElement("img"); tag.className="review-avatar"; tag.alt=""; tag.src=url; shell.replaceWith(tag); };
+      img.src=url;
     }
     return shell;
   }
@@ -200,13 +201,10 @@
     if(!url) return Promise.resolve();
     if(IMG_CACHE.has(url)) return IMG_CACHE.get(url);
     var pr = new Promise(function(resolve){
-      try{
-        var im = new Image();
-        im.decoding = "async"; im.loading = "eager";
-        im.onload = function(){ resolve(url); };
-        im.onerror = function(){ resolve(url); };
-        im.src = url;
-      }catch(_){ resolve(url); }
+      var im = new Image();
+      im.onload = function(){ resolve(url); };
+      im.onerror = function(){ resolve(url); };
+      im.src = url;
     });
     IMG_CACHE.set(url, pr);
     return pr;
@@ -218,52 +216,7 @@
     return Promise.resolve();
   }
 
-  /* ---- robust parsers ---- */
-  function getPhotoUrl(o){
-    if(!o||typeof o!=="object") return "";
-    var k=Object.keys(o); for(var i=0;i<k.length;i++){ var n=k[i], ln=n.toLowerCase();
-      if(ln==="photo"||ln==="reviewerphotourl"||ln==="profilephotourl"||ln==="profile_photo_url"||ln==="photourl"||ln==="image"||ln==="imageurl"||ln==="avatar"||ln==="avatarurl"||ln==="productimage"){
-        var v = (o[n]==null?"":String(o[n])).trim(); if(v) return v;
-      } }
-    return "";
-  }
-  function normReview(x){ 
-    return { kind:"review",
-      authorName:x.authorName||x.userName||x.Header||x.name||x.author||"Anonymous",
-      text:x.text||x.reviewText||x.Content||x.content||"",
-      rating:x.rating||x.stars||x.score||5,
-      profilePhotoUrl:x.Photo||x.reviewerPhotoUrl||getPhotoUrl(x)
-    };
-  }
-  function normPurchase(x){
-    return { kind:"purchase",
-      buyer:x.buyer||x.buyerName||x.customerName||x.name||x.customer||"לקוח/ה",
-      product:x.product||x.productName||x.item||x.title||"מוצר",
-      image:x.productImage||x.image||getPhotoUrl(x)||"",
-      purchased_at:x.purchased_at||x.created_at||x.time||x.timestamp||new Date().toISOString()
-    };
-  }
-  function normalizeArray(data, as){
-    var arr=[];
-    if(Array.isArray(data)) arr=data;
-    else if(data&&typeof data==="object"){
-      if(Array.isArray(data.items))      arr=data.items;
-      else if(Array.isArray(data.data))  arr=data.data;
-      else if(Array.isArray(data.results)) arr=data.results;
-      else if(Array.isArray(data.records)) arr=data.records;
-      else if(Array.isArray(data.reviews)) arr=data.reviews;
-      else if(Array.isArray(data.purchases)) arr=data.purchases;
-      else if(Array.isArray(data.purchase))  arr=data.purchase;
-      else if(Array.isArray(data.orders))    arr=data.orders;
-      else if(Array.isArray(data.events))    arr=data.events;
-      else if(data.text||data.Content||data.reviewText||data.content||data.product||data.item||data.title) arr=[data];
-    }
-    if(as==="review")   return arr.map(normReview);
-    if(as==="purchase") return arr.map(normPurchase);
-    return arr;
-  }
-
-  /* fetchers with mirror failover */
+  /* fetchers */
   var JS_MIRRORS = ["https://cdn.jsdelivr.net","https://fastly.jsdelivr.net","https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror){ try { var a=new URL(u), m=new URL(mirror); a.protocol=m.protocol; a.host=m.host; return a.toString(); } catch(_){ return u; } }
   function fetchTextWithMirrors(u){
@@ -279,7 +232,6 @@
       }).catch(function(err){
         if(isJSD && i < JS_MIRRORS.length-1){
           i++; var next = rewriteToMirror(u, JS_MIRRORS[i]);
-          if (DEBUG) console.warn("[both-controller] mirror retry", next);
           return attempt(next + (next.indexOf('?')>-1?'&':'?') + 't=' + Date.now());
         }
         throw err;
@@ -289,79 +241,64 @@
   }
   function fetchJSON(url){ return fetchTextWithMirrors(url).then(function(raw){ try{ return JSON.parse(raw); }catch(_){ return { items: [] }; } }); }
 
-  /* ---------- persistence (keep position across pages) ---------- */
-  var STORAGE_KEY = 'evid:widget-state:v1';
-  var itemsSig = "0_0";
-
-  function itemsSignature(arr){
-    try {
-      var s = "";
-      for (var i=0; i<Math.min(10, arr.length); i++){
-        var it = arr[i];
-        if (!it || !it.data) continue;
-        s += (it.kind||"") + ":" +
-             (it.data.authorName||it.data.buyer||"") + "|" +
-             (it.data.text||it.data.product||"");
-      }
-      var h=0; for(var j=0;j<s.length;j++) h=(h*31 + s.charCodeAt(j))>>>0;
-      return h + "_" + arr.length;
-    } catch(_){ return "0_0"; }
+  function normalizeArray(data, as){
+    var arr=[];
+    if(Array.isArray(data)) arr=data;
+    else if(data&&typeof data==="object"){
+      if(Array.isArray(data.reviews)) arr=data.reviews;
+      else if(Array.isArray(data.purchases)) arr=data.purchases;
+      else if(Array.isArray(data.items)) arr=data.items;
+    }
+    return arr.map(function(x){
+      if(as==="review") return { kind:"review", data:{
+        authorName: x.authorName||x.name||"Anonymous",
+        text: x.text||"",
+        rating: x.rating||5,
+        profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
+      }};
+      if(as==="purchase") return { kind:"purchase", data:{
+        buyer: x.buyer||x.name||"לקוח/ה",
+        product: x.product||"מוצר",
+        image: x.image||x.productImage||"",
+        purchased_at: x.purchased_at||new Date().toISOString()
+      }};
+    });
   }
 
+  /* persistence */
+  var STORAGE_KEY = 'evid:widget-state:v1';
+  var itemsSig = "0_0";
+  function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } // simplified sig
   function saveState(idxShown, sig, opt){
     try {
-      var st = {
-        idx: idxShown,
-        shownAt: Date.now(),
-        sig: sig,
-        show: SHOW_MS,
-        gap: GAP_MS
-      };
-      if (opt && opt.manualClose)   st.manualClose = true;
-      if (opt && opt.snoozeUntil)   st.snoozeUntil = Number(opt.snoozeUntil)||0;
+      var st = { idx: idxShown, shownAt: Date.now(), sig: sig };
+      if (opt && opt.manualClose) st.manualClose = true;
+      if (opt && opt.snoozeUntil) st.snoozeUntil = Number(opt.snoozeUntil)||0;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
     } catch(_) {}
   }
+  function restoreState(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; } }
+  function updateIndexOnly(newIdx){ try{ var st=restoreState(); if(st){ st.idx=newIdx; localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); } }catch(_){} }
 
-  function restoreState(){
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return null;
-      return JSON.parse(raw);
-    } catch(_){ return null; }
-  }
-
-  function updateIndexOnly(newIdx, sig){
-    try{
-      var st = restoreState();
-      if(!st){ return; }
-      st.idx = newIdx;
-      if (sig) st.sig = sig;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
-    }catch(_){}
-  }
-
-  /* ---------- interleave ---------- */
   function interleave(reviews, purchases){
     var out=[], i=0, j=0;
     while(i<reviews.length || j<purchases.length){
-      if(i<reviews.length){ out.push({kind:"review", data:reviews[i++]}); }
-      if(j<purchases.length){ out.push({kind:"purchase", data:purchases[j++]}); }
+      if(i<reviews.length){ out.push(reviews[i++]); }
+      if(j<purchases.length){ out.push(purchases[j++]); }
     }
     return out;
   }
 
-  /* ---- rotation + timers ---- */
+  /* ---- rotation ---- */
   var items=[], idx=0, loop=null, preTimer=null;
   var isDismissed = false;
-
   var currentCard = null;
   var fadeTimeout = null;
   var removeTimeout = null;
-  var currentShowStart = 0;
-  var currentShowDuration = 0;
-  var remainingShowMs = 0;
   var isPausedForReadMore = false;
+  var currentShowDuration = 0;
+  var currentShowStart = 0;
+  var remainingShowMs = 0;
 
   function clearShowTimers(){
     if(fadeTimeout){ clearTimeout(fadeTimeout); fadeTimeout = null; }
@@ -373,258 +310,164 @@
     if(!currentCard) return;
     currentShowDuration = showFor;
     currentShowStart = Date.now();
-    var fadeOutMs = Math.max(0, showFor - 360);
 
     fadeTimeout = setTimeout(function(){
       if(!currentCard) return;
       currentCard.classList.remove("enter");
       currentCard.classList.add("leave");
-    }, fadeOutMs);
+    }, showFor);
 
     removeTimeout = setTimeout(function(){
-      if(currentCard && currentCard.parentNode){
-        currentCard.parentNode.removeChild(currentCard);
-      }
+      if(currentCard && currentCard.parentNode){ currentCard.parentNode.removeChild(currentCard); }
       currentCard = null;
-    }, showFor);
+    }, showFor + 700); // Wait for animation
   }
 
   function pauseForReadMore(){
     if(isPausedForReadMore || !currentCard) return;
     isPausedForReadMore = true;
-
-    if(loop){ clearInterval(loop); loop = null; }
-    if(preTimer){ clearTimeout(preTimer); preTimer = null; }
-
-    var now = Date.now();
-    var elapsed = now - currentShowStart;
+    if(loop) clearInterval(loop);
+    if(preTimer) clearTimeout(preTimer);
+    var elapsed = Date.now() - currentShowStart;
     remainingShowMs = Math.max(0, currentShowDuration - elapsed);
-
     clearShowTimers();
   }
 
   function resumeFromReadMore(){
     if(!isPausedForReadMore || !currentCard) return;
     isPausedForReadMore = false;
-
-    var showMs = Math.max(300, remainingShowMs || 300);
+    var showMs = Math.max(2000, remainingShowMs); // Ensure at least 2s visibility
     scheduleHide(showMs);
-
-    preTimer = setTimeout(function(){
-      startFrom(0);
-    }, showMs + GAP_MS);
+    preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
   }
 
-  /* ---- renderers ---- */
+  /* ---- RENDERERS (NEW DESIGN) ---- */
+  
   function renderReviewCard(item){
-    var card=document.createElement("div"); card.className="card review-card enter";
+    var card = document.createElement("div"); 
+    card.className = "card review-card enter";
 
-    var x=document.createElement("button"); x.className="xbtn"; x.setAttribute("aria-label","Close"); x.textContent="×";
-    x.addEventListener("click", function(){
-      handleDismiss();
-      clearShowTimers();
-      card.classList.remove("enter");
-      card.classList.add("leave");
-      setTimeout(function(){ if(card.parentNode){ card.parentNode.removeChild(card);} }, 360);
-    });
+    // Close button
+    var x = document.createElement("button"); x.className="xbtn"; x.textContent="×";
+    x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
-    var header=document.createElement("div"); header.className="row-r";
-    var avatarEl = renderAvatarPreloaded(item.authorName, item.profilePhotoUrl);
-    var meta=document.createElement("div"); meta.className="meta";
-    var name=document.createElement("div"); name.className="name"; name.textContent=item.authorName||"Anonymous";
-    meta.appendChild(name);
-    header.appendChild(avatarEl); header.appendChild(meta); header.appendChild(document.createElement("span"));
+    // Header: User + Badge
+    var header = document.createElement("div"); header.className = "review-header";
+    var profile = document.createElement("div"); profile.className = "user-profile";
+    profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
+    
+    var name = document.createElement("span"); name.className = "reviewer-name"; 
+    name.textContent = item.authorName;
+    profile.appendChild(name);
+    
+    header.appendChild(profile);
+    
+    // Badge (Verified EVID)
+    var badge = document.createElement("div"); badge.className="compact-badge";
+    badge.innerHTML = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID';
+    // Removed time-ago from header as requested
+    
+    // Text body
+    var body = document.createElement("div"); 
+    body.className = "review-text";
+    body.textContent = item.text; // Normalized text
+    
+    // Read More Button Logic
+    var readMoreBtn = document.createElement("button");
+    readMoreBtn.className = "read-more-btn";
+    readMoreBtn.textContent = "קרא עוד...";
+    readMoreBtn.style.display = "none"; // Hidden by default
 
-    var fullText = normalizeSpaces(item.text);
+    // Check line clamp logic after render
+    setTimeout(function(){
+      if (body.scrollHeight > body.clientHeight + 2) {
+        readMoreBtn.style.display = "block";
+      }
+    }, 0);
 
-    var body=document.createElement("div");
-    body.className="body";
-    body.dataset.expanded = "0";
-
-    // Detect RTL (Hebrew) vs LTR (e.g. English). Hebrew stays RTL; others become LTR.
-    var isRTL = /[\u0590-\u05FF]/.test(fullText);
-    if (!isRTL) {
-      body.classList.add("ltr");
-    }
-
-    var readMore = null;
-    function ensureReadMore(){
-      if(readMore) return;
-      readMore = document.createElement("button");
-      readMore.type = "button";
-      readMore.className = "readmore-pill";
-      readMore.textContent = "קרא עוד";
-
-      readMore.addEventListener("click", function(e){
-        e.stopPropagation();
-        if (body.dataset.expanded === "0") {
-          body.dataset.expanded = "1";
-          body.classList.remove("clamped");
-          body.textContent = card._fullText;
-          readMore.textContent = "סגור";
-          pauseForReadMore();
-        } else {
-          body.dataset.expanded = "0";
-          body.classList.add("clamped");
-          body.textContent = card._truncatedText;
-          readMore.textContent = "קרא עוד";
-          resumeFromReadMore();
-        }
-      });
-
-      card.appendChild(readMore);
-    }
-
-    // Clamp text to at most N lines (3 desktop, 2 mobile) by truncating the string (no height cropping).
-    card._setupReadMore = function(){
-      try{
-        var full = fullText;
-        card._fullText = full;
-
-        body.textContent = full;
-        var style = window.getComputedStyle(body);
-        var lh = parseFloat(style.lineHeight);
-        if(!lh || isNaN(lh)){
-          var fs = parseFloat(style.fontSize) || 14;
-          lh = fs * 1.35;
-        }
-        var padTop = parseFloat(style.paddingTop) || 0;
-        var padBottom = parseFloat(style.paddingBottom) || 0;
-
-        var isMobile = window.matchMedia && window.matchMedia('(max-width:480px)').matches;
-        var maxLines = isMobile ? 2 : 3;
-
-        var clampHeight = lh * maxLines + padTop + padBottom;
-
-        var fullHeight = body.scrollHeight;
-
-        if (fullHeight <= clampHeight + 1) {
-          // Fits in allowed lines → no truncation, no button
-          body.dataset.expanded = "1";
-          body.classList.remove("clamped");
-          card._truncatedText = full;
-          return;
-        }
-
-        // Needs truncation: binary search best substring length that fits in allowed lines
-        var low = 0, high = full.length, best = 0;
-        while (low <= high) {
-          var mid = (low + high) >> 1;
-          var test = full.slice(0, mid).trim();
-          body.textContent = test ? (test + "…") : "";
-          if (body.scrollHeight <= clampHeight + 1) {
-            best = mid;
-            low = mid + 1;
-          } else {
-            high = mid - 1;
-          }
-        }
-
-        var finalText;
-        if (best > 0 && best < full.length) {
-          // Extra safety: cut a few extra chars to avoid overflow on edge cases
-          var SAFE_CHARS = 12;
-          var safeIndex = Math.max(0, best - SAFE_CHARS);
-          finalText = full.slice(0, safeIndex).trim() + "…";
-        } else {
-          finalText = full;
-        }
-
-        body.textContent = finalText;
-        body.dataset.expanded = "0";
-        body.classList.add("clamped");
-        card._truncatedText = finalText;
-
-        ensureReadMore();
-      }catch(_){}
+    readMoreBtn.onclick = function(e){
+      e.stopPropagation();
+      var isExpanded = body.classList.toggle("expanded");
+      readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
+      if(isExpanded) pauseForReadMore(); else resumeFromReadMore();
     };
 
-    var brand=document.createElement("div"); brand.className="brand";
-    brand.innerHTML = ''
-      + '<span class="gmark" aria-label="Google">'
-      + '  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">'
-      + '    <path fill="#4285F4" d="M21.35 11.1h-9.17v2.98h5.37c-.26 1.43-1.03 2.6-2.18 3.38l2.57 2.04C20.06 18.15 21.35 15.87 21.35 13c0-.64-.06-1.24-.17-1.9z"></path>'
-      + '    <path fill="#34A853" d="M12.18 22c2.67 0 4.9-.88 6.53-2.36l-3.2-2.52c-.9.6-2.03.95-3.33.95-2.56 0-4.72-1.73-5.49-4.05H3.4v2.56C5.12 20.47 8.39 22 12.18 22z"></path>'
-      + '    <path fill="#FBBC05" d="M6.69 14.02a5.88 5.88 0 0 1 0-3.82V7.64H3.4a9.82 9.82 0 0 0 0 8.72z"></path>'
-      + '    <path fill="#EA4335" d="M12.18 5.5c1.45 0 2.75.5 3.77 1.48l2.82-2.82A9.36 9.36 0 0 0 12.18 2C8.4 2 5.17 4.17 3.4 7.64l3.29 2.56C7.46 7.88 9.62 5.5 12.18 5.5z"></path>'
-      + '  </svg>'
-      + '</span>'
-      + '<span class="gstars" aria-label="5 star rating">★ ★ ★ ★ ★</span>'
-      + (BADGE ? '<span class="badgeText" aria-label="Verified by Evid"><span class="verified">מאומת</span><span class="evid">EVID<span class="tick" aria-hidden="true">✓</span></span></span>' : '');
-    card.appendChild(header); card.appendChild(body); card.appendChild(brand);
+    // Footer
+    var footer = document.createElement("div"); footer.className = "review-footer";
+    var stars = document.createElement("div"); stars.className = "stars-wrapper";
+    
+    // Google Icon RIGHT of stars
+    stars.innerHTML = '<svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>'
+                    + '<div class="stars">★★★★★</div>';
+    
+    footer.appendChild(stars);
+    footer.appendChild(badge); // Badge moved to footer left
+
+    card.appendChild(x);
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(readMoreBtn);
+    card.appendChild(footer);
+    
     return card;
   }
 
   function renderPurchaseCard(p){
-    var card=document.createElement("div"); card.className="card purchase-card enter";
-    var x=document.createElement("button"); x.className="xbtn"; x.setAttribute("aria-label","Close"); x.textContent="×";
-    x.addEventListener("click", function(){
-      handleDismiss();
-      clearShowTimers();
-      card.classList.remove("enter");
-      card.classList.add("leave");
-      setTimeout(function(){ if(card.parentNode){ card.parentNode.removeChild(card);} }, 360);
-    });
+    var card = document.createElement("div"); 
+    card.className = "card purchase-card enter";
+
+    var x = document.createElement("button"); x.className="xbtn"; x.textContent="×";
+    x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
-    var top=document.createElement("div"); top.className="p-top";
-    var textCol=document.createElement("div"); textCol.className="ptext";
+    // Image Left
+    var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
+    var img = document.createElement("img"); img.className = "course-img";
+    img.src = p.image || ""; 
+    img.onerror = function(){ this.style.display='none'; var fb=document.createElement('div'); fb.className='pimg-fallback'; fb.textContent='✓'; imgWrap.appendChild(fb); };
+    imgWrap.appendChild(img);
 
-    var tTop=document.createElement("div"); tTop.className="ptime-top";
-    tTop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-                   + '  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" fill="none"/>'
-                   + '  <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
-                   + '</svg>' + escapeHTML(timeAgo(p.purchased_at));
-    textCol.appendChild(tTop);
+    // Content Right
+    var content = document.createElement("div"); content.className = "p-content";
+    
+    var header = document.createElement("div"); header.className = "fomo-header";
+    header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>'
+                     + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
+    
+    var body = document.createElement("div"); body.className = "fomo-body";
+    body.innerHTML = 'רכש/ה <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
-    var sentence=document.createElement("div"); sentence.className="psentence";
-    var buyerFirst = firstName(p.buyer);
-    sentence.innerHTML = '<strong class="buyer">'+escapeHTML(buyerFirst)+'</strong> רכש/ה '
-                       + '<span class="prod">'+escapeHTML(p.product)+'</span>';
-    textCol.appendChild(sentence);
+    var footer = document.createElement("div"); footer.className = "fomo-footer-row";
+    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>מבוקש עכשיו</div>'
+                     + '<div class="verified-badge"><span>✓</span> הרשמה מאומתת</div>';
 
-    var media=document.createElement("div"); media.className="pmedia";
-    var frame=document.createElement("div"); frame.className="pframe";
-    var imgEl;
-    function fb(){ var d=document.createElement("div"); d.className="pimg-fallback"; d.textContent="✓"; return d; }
-    function swap(el){ if(imgEl && imgEl.parentNode){ imgEl.parentNode.replaceChild(el, imgEl);} imgEl = el; }
-    if (p.image) {
-      var pre = new Image(); pre.decoding="async"; pre.loading="eager";
-      pre.onload = function(){ var tag=document.createElement("img"); tag.className="pimg"; tag.alt=""; tag.src = p.image; swap(tag); };
-      pre.onerror = function(){ swap(fb()); };
-      pre.src = p.image; imgEl = fb();
-    } else { imgEl = fb(); }
-    frame.appendChild(imgEl);
-    media.appendChild(frame);
+    content.appendChild(header);
+    content.appendChild(body);
+    content.appendChild(footer);
 
-    var hotcap = document.createElement('div'); hotcap.className = 'hotcap';
-    hotcap.innerHTML = '<span class="badge-hot pulse" role="status" aria-live="polite">'
-      + '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
-      + '  <path d="M13 2.5C13 4.3 12.2 5.7 11.1 7 10 8.4 9 9.8 9 11.8A4 4 0 0 0 13 16a4 4 0 0 0 4-4c0-2.5-1.3-4-2.4-5.3C13.4 5.3 13 4.3 13 2.5zM11 3.2C9 5 7 7.9 7 11.3 7 15.4 9.9 18 13 18s6-2.6 6-6.7c0-3.2-1.7-5.4-3.3-7.4.3 1.3.2 2.7-.4 3.8C14.6 7 14 5.6 14 3.7 13.2 3.1 12.2 2.7 11 3.2z"></path>'
-      + '</svg>'
-      + 'פופולרי עכשיו</span>';
-    media.appendChild(hotcap);
+    var timer = document.createElement("div"); timer.className = "timer-bar";
+    // Set timer animation duration to match SHOW_MS
+    timer.style.animationDuration = (SHOW_MS/1000) + 's';
 
-    top.appendChild(textCol);
-    top.appendChild(media);
-    card.appendChild(top);
+    card.appendChild(imgWrap);
+    card.appendChild(content);
+    card.appendChild(timer);
+
     return card;
   }
 
-  function showNext(overrideShowMs){
-    if(!items.length) return;
-    if(isDismissed) return;
-
+  function showNext(){
+    if(!items.length || isDismissed) return;
     clearShowTimers();
     isPausedForReadMore = false;
-    remainingShowMs = 0;
 
     var itm = items[idx % items.length];
     var shownIndex = idx % items.length;
     idx++;
 
-    if (itm.kind === "review") wrap.classList.add('sticky-review'); else wrap.classList.remove('sticky-review');
+    if (itm.kind === "review") wrap.classList.add('sticky-review'); 
+    else wrap.classList.remove('sticky-review');
 
     warmForItem(itm).then(function(){
       if(isDismissed) return;
@@ -632,147 +475,68 @@
       wrap.innerHTML=""; 
       wrap.appendChild(card);
       currentCard = card;
-
-      if(itm.kind === "review" && typeof card._setupReadMore === "function"){
-        card._setupReadMore();
-      }
-
       saveState(shownIndex, itemsSig);
-
-      var showFor = Math.max(300, Number(overrideShowMs||SHOW_MS));
-      scheduleHide(showFor);
+      scheduleHide(SHOW_MS);
     });
   }
 
-  function startFrom(beginDelayMs){
+  function startFrom(delay){
     if(loop) clearInterval(loop);
     if(preTimer) clearTimeout(preTimer);
     if(isDismissed) return;
 
     var cycle = SHOW_MS + GAP_MS;
-
-    function beginInterval(){
+    function begin(){
       if(isDismissed) return;
       showNext();
-      loop = setInterval(function(){ if(!isDismissed) showNext(); }, cycle);
+      loop = setInterval(showNext, cycle);
     }
-
-    if (beginDelayMs && beginDelayMs > 0){
-      preTimer = setTimeout(beginInterval, beginDelayMs);
-    } else {
-      beginInterval();
-    }
+    if (delay > 0) preTimer = setTimeout(begin, delay);
+    else begin();
   }
 
   function handleDismiss(){
-    try{
-      isDismissed = true;
-      if(loop) clearInterval(loop);
-      if(preTimer) clearTimeout(preTimer);
-      clearShowTimers();
-      isPausedForReadMore = false;
-
-      var current = (idx - 1 + (items.length*2)) % (items.length||1);
-      var until = Date.now() + DISMISS_COOLDOWN_MS;
-
-      saveState(current, itemsSig, { manualClose: true, snoozeUntil: until });
-    }catch(_){}
+    isDismissed = true;
+    if(loop) clearInterval(loop);
+    if(preTimer) clearTimeout(preTimer);
+    clearShowTimers();
+    var current = (idx - 1 + items.length) % items.length;
+    saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
-  /* ---- data loading ---- */
+  /* ---- init ---- */
   function loadAll(){
-    var p1 = REVIEWS_EP ? fetchJSON(REVIEWS_EP).then(function(d){ var a=normalizeArray(d,"review"); log("reviews:", a.length); return a; }).catch(function(e){ console.warn("reviews fetch err:", e); return []; }) : Promise.resolve([]);
-    var p2 = PURCHASES_EP ? fetchJSON(PURCHASES_EP).then(function(d){ var a=normalizeArray(d,"purchase"); log("purchases:", a.length); return a; }).catch(function(e){ console.warn("purchases fetch err:", e); return []; }) : Promise.resolve([]);
+    var p1 = REVIEWS_EP ? fetchJSON(REVIEWS_EP).then(function(d){ return normalizeArray(d,"review"); }) : Promise.resolve([]);
+    var p2 = PURCHASES_EP ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }) : Promise.resolve([]);
 
     Promise.all([p1,p2]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
-
-      rev = rev.filter(function(v){
-        return normalizeSpaces(v.text).length > 0;
-      });
-
-      rev.forEach(function(v){ if(v.profilePhotoUrl) warmImage(v.profilePhotoUrl); });
-      pur.forEach(function(v){ if(v.image) warmImage(v.image); });
-
+      // Filter empty reviews
+      rev = rev.filter(function(v){ return normalizeSpaces(v.data.text).length > 0; });
+      
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
-      log("total items:", items.length);
 
-      if(!items.length){
-        root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">No items to display.</div>';
-        return;
-      }
+      if(!items.length) return;
 
-      ensureAssistantInHead().then(function(){
+      ensureFontInHead().then(function(){
         wrap.classList.add('ready');
-
         var state = restoreState();
-        var cycle = SHOW_MS + GAP_MS;
         var now = Date.now();
 
         if (state && state.sig === itemsSig && state.manualClose) {
-          var snoozeUntil = Number(state.snoozeUntil||0);
-          idx = ((Number(state.idx||0) + 1) % items.length + items.length) % items.length;
-
-          if (snoozeUntil > now) {
-            var wait = snoozeUntil - now;
-            startFrom(wait);
-            return;
-          } else {
-            startFrom(0);
-            return;
-          }
-        }
-
-        if (state && state.sig === itemsSig) {
-          var elapsed = Math.max(0, now - Number(state.shownAt||0));
-          var step = Math.floor(elapsed / cycle);
-          var elapsedInCycle = elapsed % cycle;
-
-          if (elapsedInCycle < SHOW_MS){
-            idx = (Number(state.idx||0) + step) % items.length;
-            var remainingShow = SHOW_MS - elapsedInCycle;
-
-            showNext(remainingShow);
-
-            preTimer = setTimeout(function(){
-              startFrom(0);
-            }, remainingShow + GAP_MS);
-
-          } else {
-            idx = (Number(state.idx||0) + step + 1) % items.length;
-            var remainingGap = cycle - elapsedInCycle;
-            startFrom(remainingGap);
-          }
+          if (state.snoozeUntil > now) setTimeout(function(){ isDismissed=false; startFrom(0); }, state.snoozeUntil - now);
+          else startFrom(0);
         } else {
           if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
           else startFrom(0);
         }
       });
-    })
-    .catch(function(e){
-      root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Widget error: '+ String(e && e.message || e) +'</div>';
-      console.error("[both-controller v3.6.4]", e);
     });
   }
 
-  // Re-apply clamp on resize for the currently visible (collapsed) review
-  window.addEventListener('resize', function(){
-    try{
-      if(!currentCard || !currentCard._setupReadMore) return;
-      var body = currentCard.querySelector('.body');
-      if(body && body.dataset.expanded === "0"){
-        currentCard._setupReadMore();
-      }
-    }catch(_){}
-  });
-
   window.addEventListener('beforeunload', function(){
-    try {
-      if (!items.length) return;
-      var lastShown = (idx - 1 + items.length*2) % (items.length||1);
-      updateIndexOnly(lastShown, itemsSig);
-    } catch(_) {}
+    if(items.length) updateIndexOnly((idx - 1 + items.length) % items.length);
   });
 
   loadAll();
