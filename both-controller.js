@@ -1,4 +1,4 @@
-/*! both-controller v4.0.1 — Fixed for JSON Keys (Header/Content) */
+/*! both-controller v4.0.2 — Persistence Fix + Glassmorphism Tuning */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -14,7 +14,9 @@
   var GAP_MS     = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
   var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
-  var DEBUG = (((scriptEl && scriptEl.getAttribute("data-debug")) || "0") === "1");
+  
+  // Storage Key for persistence
+  var STORAGE_KEY = 'evid:widget-state:v3';
 
   if (!REVIEWS_EP && !PURCHASES_EP) {
     root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Missing endpoints.</div>';
@@ -22,8 +24,8 @@
   }
 
   /* =========================
-      Font: Rubik (No FOUT logic kept simple for Rubik)
-      ========================= */
+      Font: Rubik
+     ========================= */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
   function ensureFontInHead(){
     try{
@@ -38,7 +40,7 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles (The New Design) ========== */
+  /* ========== styles (Enhanced Glassmorphism) ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -53,16 +55,17 @@
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
-  /* Shared Card Styles (Glassmorphism) */
+  /* Shared Card Styles (Glassmorphism Tweaked) */
   + '.card {'
   + '  position: relative;'
   + '  width: 340px; max-width: 90vw;'
-  + '  background: rgba(255, 255, 255, 0.93);'
+  /* Changed transparency from 0.93 to 0.65 for real glass effect */
+  + '  background: rgba(255, 255, 255, 0.85);' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
   + '  border-radius: 16px;'
-  + '  border: 1px solid rgba(255, 255, 255, 0.8);'
-  + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.05);'
+  + '  border: 1px solid rgba(255, 255, 255, 0.4);' /* More subtle border */
+  + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
   + '  overflow: hidden;'
   + '  pointer-events: auto;' 
   + '  transition: transform 0.3s ease;'
@@ -78,9 +81,9 @@
   /* Close Button */
   + '.xbtn {'
   + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
-  + '  background: #f1f5f9; border-radius: 50%; border: none;'
+  + '  background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none;'
   + '  display: flex; align-items: center; justify-content: center;'
-  + '  cursor: pointer; color: #94a3b8; font-size: 10px; z-index: 10;'
+  + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
   + '  opacity: 0; transition: opacity 0.2s;'
   + '}'
   + '.card:hover .xbtn { opacity: 1; }'
@@ -250,7 +253,6 @@
       else if(Array.isArray(data.items)) arr=data.items;
     }
     return arr.map(function(x){
-      /* FIX: Added Header/Content mapping for Reviews */
       if(as==="review") return { kind:"review", data:{
         authorName: x.Header||x.authorName||x.name||"Anonymous",
         text: x.Content||x.text||"",
@@ -266,10 +268,10 @@
     });
   }
 
-  /* persistence */
-  var STORAGE_KEY = 'evid:widget-state:v2';
+  /* persistence - STATE MANAGEMENT UPDATED */
   var itemsSig = "0_0";
-  function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } // simplified sig
+  function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } 
+  
   function saveState(idxShown, sig, opt){
     try {
       var st = { idx: idxShown, shownAt: Date.now(), sig: sig };
@@ -279,7 +281,6 @@
     } catch(_) {}
   }
   function restoreState(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; } }
-  function updateIndexOnly(newIdx){ try{ var st=restoreState(); if(st){ st.idx=newIdx; localStorage.setItem(STORAGE_KEY, JSON.stringify(st)); } }catch(_){} }
 
   function interleave(reviews, purchases){
     var out=[], i=0, j=0;
@@ -321,7 +322,7 @@
     removeTimeout = setTimeout(function(){
       if(currentCard && currentCard.parentNode){ currentCard.parentNode.removeChild(currentCard); }
       currentCard = null;
-    }, showFor + 700); // Wait for animation
+    }, showFor + 700); 
   }
 
   function pauseForReadMore(){
@@ -337,23 +338,21 @@
   function resumeFromReadMore(){
     if(!isPausedForReadMore || !currentCard) return;
     isPausedForReadMore = false;
-    var showMs = Math.max(2000, remainingShowMs); // Ensure at least 2s visibility
+    var showMs = Math.max(2000, remainingShowMs); 
     scheduleHide(showMs);
     preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
   }
 
-  /* ---- RENDERERS (NEW DESIGN) ---- */
+  /* ---- RENDERERS ---- */
    
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
 
-    // Close button
     var x = document.createElement("button"); x.className="xbtn"; x.textContent="×";
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
-    // Header: User + Badge
     var header = document.createElement("div"); header.className = "review-header";
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
@@ -364,23 +363,18 @@
     
     header.appendChild(profile);
     
-    // Badge (Verified EVID)
     var badge = document.createElement("div"); badge.className="compact-badge";
     badge.innerHTML = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID';
-    // Removed time-ago from header as requested
     
-    // Text body
     var body = document.createElement("div"); 
     body.className = "review-text";
-    body.textContent = item.text; // Normalized text
+    body.textContent = item.text; 
     
-    // Read More Button Logic
     var readMoreBtn = document.createElement("button");
     readMoreBtn.className = "read-more-btn";
     readMoreBtn.textContent = "קרא עוד...";
-    readMoreBtn.style.display = "none"; // Hidden by default
+    readMoreBtn.style.display = "none"; 
 
-    // Check line clamp logic after render
     setTimeout(function(){
       if (body.scrollHeight > body.clientHeight + 2) {
         readMoreBtn.style.display = "block";
@@ -394,16 +388,14 @@
       if(isExpanded) pauseForReadMore(); else resumeFromReadMore();
     };
 
-    // Footer
     var footer = document.createElement("div"); footer.className = "review-footer";
     var stars = document.createElement("div"); stars.className = "stars-wrapper";
     
-    // Google Icon RIGHT of stars
     stars.innerHTML = '<svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>'
                     + '<div class="stars">★★★★★</div>';
     
     footer.appendChild(stars);
-    footer.appendChild(badge); // Badge moved to footer left
+    footer.appendChild(badge); 
 
     card.appendChild(x);
     card.appendChild(header);
@@ -422,14 +414,12 @@
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
-    // Image Left
     var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
     var img = document.createElement("img"); img.className = "course-img";
     img.src = p.image || ""; 
     img.onerror = function(){ this.style.display='none'; var fb=document.createElement('div'); fb.className='pimg-fallback'; fb.textContent='✓'; imgWrap.appendChild(fb); };
     imgWrap.appendChild(img);
 
-    // Content Right
     var content = document.createElement("div"); content.className = "p-content";
     
     var header = document.createElement("div"); header.className = "fomo-header";
@@ -448,7 +438,6 @@
     content.appendChild(footer);
 
     var timer = document.createElement("div"); timer.className = "timer-bar";
-    // Set timer animation duration to match SHOW_MS
     timer.style.animationDuration = (SHOW_MS/1000) + 's';
 
     card.appendChild(imgWrap);
@@ -464,7 +453,10 @@
     isPausedForReadMore = false;
 
     var itm = items[idx % items.length];
-    var shownIndex = idx % items.length;
+    
+    // Save state explicitly every time we show a card
+    saveState(idx % items.length, itemsSig);
+    
     idx++;
 
     if (itm.kind === "review") wrap.classList.add('sticky-review'); 
@@ -476,7 +468,6 @@
       wrap.innerHTML=""; 
       wrap.appendChild(card);
       currentCard = card;
-      saveState(shownIndex, itemsSig);
       scheduleHide(SHOW_MS);
     });
   }
@@ -512,7 +503,6 @@
 
     Promise.all([p1,p2]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
-      // Filter empty reviews
       rev = rev.filter(function(v){ return normalizeSpaces(v.data.text).length > 0; });
       
       items = interleave(rev, pur);
@@ -525,20 +515,27 @@
         var state = restoreState();
         var now = Date.now();
 
-        if (state && state.sig === itemsSig && state.manualClose) {
-          if (state.snoozeUntil > now) setTimeout(function(){ isDismissed=false; startFrom(0); }, state.snoozeUntil - now);
-          else startFrom(0);
+        // Resume Logic
+        if (state && state.sig === itemsSig) {
+          if (state.manualClose && state.snoozeUntil > now) {
+             // Still snoozed
+             setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
+          } else if (!state.manualClose) {
+             // Resume from next item immediately (No Delay)
+             idx = state.idx + 1;
+             startFrom(0); 
+          } else {
+             // Snooze expired, start fresh
+             startFrom(INIT_MS);
+          }
         } else {
+          // First time visitor
           if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
           else startFrom(0);
         }
       });
     });
   }
-
-  window.addEventListener('beforeunload', function(){
-    if(items.length) updateIndexOnly((idx - 1 + items.length) % items.length);
-  });
 
   loadAll();
 })();
