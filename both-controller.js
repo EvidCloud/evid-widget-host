@@ -1,4 +1,4 @@
-/*! both-controller v4.0.0 — New Glassmorphism Design + Rubik Font */
+/*! both-controller v4.0.1 — Fixed for JSON Keys (Header/Content) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -8,11 +8,11 @@
   var scriptEl = document.currentScript || scripts[scripts.length - 1];
 
   /* ---- config ---- */
-  var REVIEWS_EP   = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
+  var REVIEWS_EP    = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
   var PURCHASES_EP = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
-  var SHOW_MS   = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))       || 15000);
-  var GAP_MS    = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))        || 6000);
-  var INIT_MS   = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
+  var SHOW_MS    = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))        || 15000);
+  var GAP_MS     = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
+  var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   var DEBUG = (((scriptEl && scriptEl.getAttribute("data-debug")) || "0") === "1");
 
@@ -22,8 +22,8 @@
   }
 
   /* =========================
-     Font: Rubik (No FOUT logic kept simple for Rubik)
-     ========================= */
+      Font: Rubik (No FOUT logic kept simple for Rubik)
+      ========================= */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
   function ensureFontInHead(){
     try{
@@ -34,7 +34,7 @@
         link.href = FONT_HREF;
         document.head.appendChild(link);
       }
-      return Promise.resolve(); // Assuming font loads fast enough or falls back gracefully
+      return Promise.resolve(); 
     }catch(_){ return Promise.resolve(); }
   }
 
@@ -49,7 +49,7 @@
   + '.wrap{'
   + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
   + '  direction:rtl;'
-  + '  pointer-events:none;' /* Allow clicks through wrapper */
+  + '  pointer-events:none;' 
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
@@ -64,7 +64,7 @@
   + '  border: 1px solid rgba(255, 255, 255, 0.8);'
   + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.05);'
   + '  overflow: hidden;'
-  + '  pointer-events: auto;' /* Re-enable clicks on card */
+  + '  pointer-events: auto;' 
   + '  transition: transform 0.3s ease;'
   + '}'
   + '.card:hover { transform: translateY(-5px); }'
@@ -92,7 +92,7 @@
   + '.review-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7; }'
   + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
   + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
-  
+   
   /* Text & Read More */
   + '.review-text {'
   + '  font-size: 13px; line-height: 1.5; color: #374151; margin: 0;'
@@ -125,7 +125,7 @@
   + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
   + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
   + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
-  
+   
   + '.p-content {'
   + '  flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column;'
   + '  justify-content: center; gap: 2px; text-align: right; height: 100%;'
@@ -135,7 +135,7 @@
   + '.fomo-time { font-size: 11px; }'
   + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
   + '.product-highlight { font-weight: 500; color: #2563eb; }'
-  
+   
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
   + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; }'
@@ -148,10 +148,10 @@
   + '  padding: 2px 8px; border-radius: 4px; font-weight: 500; display: flex; align-items: center; gap: 3px;'
   + '}'
   + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; animation: timerShrink 5s linear forwards; }'
-  
+   
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
-  
+   
   /* Mobile sticky adjustments */
   + '@media (max-width:480px){'
   + '  .wrap.sticky-review { right:0; left:0; bottom:0; padding:0; width:100%; display:flex; justify-content:center; }'
@@ -250,9 +250,10 @@
       else if(Array.isArray(data.items)) arr=data.items;
     }
     return arr.map(function(x){
+      /* FIX: Added Header/Content mapping for Reviews */
       if(as==="review") return { kind:"review", data:{
-        authorName: x.authorName||x.name||"Anonymous",
-        text: x.text||"",
+        authorName: x.Header||x.authorName||x.name||"Anonymous",
+        text: x.Content||x.text||"",
         rating: x.rating||5,
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
@@ -342,7 +343,7 @@
   }
 
   /* ---- RENDERERS (NEW DESIGN) ---- */
-  
+   
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
