@@ -1,4 +1,4 @@
-/*! both-controller v4.0.2 — Persistence Fix + Glassmorphism Tuning */
+/*! both-controller v4.0.3 — Fix Purchase Mapping & Debugging */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -15,7 +15,6 @@
   var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
-  // Storage Key for persistence
   var STORAGE_KEY = 'evid:widget-state:v3';
 
   if (!REVIEWS_EP && !PURCHASES_EP) {
@@ -40,7 +39,7 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles (Enhanced Glassmorphism) ========== */
+  /* ========== styles (Glassmorphism 0.85) ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -55,16 +54,15 @@
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
-  /* Shared Card Styles (Glassmorphism Tweaked) */
+  /* Shared Card Styles */
   + '.card {'
   + '  position: relative;'
   + '  width: 340px; max-width: 90vw;'
-  /* Changed transparency from 0.93 to 0.65 for real glass effect */
   + '  background: rgba(255, 255, 255, 0.85);' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
   + '  border-radius: 16px;'
-  + '  border: 1px solid rgba(255, 255, 255, 0.4);' /* More subtle border */
+  + '  border: 1px solid rgba(255, 255, 255, 0.4);' 
   + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
   + '  overflow: hidden;'
   + '  pointer-events: auto;' 
@@ -259,16 +257,22 @@
         rating: x.rating||5,
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
-      if(as==="purchase") return { kind:"purchase", data:{
-        buyer: x.buyer||x.name||"לקוח/ה",
-        product: x.product||"מוצר",
-        image: x.image||x.productImage||"",
-        purchased_at: x.purchased_at||new Date().toISOString()
-      }};
+      if(as==="purchase") {
+        /* DEBUG: Print raw item to console so we can see keys */
+        console.log("Raw Purchase Item:", x);
+        
+        return { kind:"purchase", data:{
+          /* Trying both lowercase and Uppercase keys + generic fallbacks */
+          buyer: x.buyer || x.Buyer || x.name || x.Name || "לקוח/ה",
+          product: x.product || x.Product || x.title || "מוצר",
+          image: x.image || x.Image || x.productImage || "",
+          purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
+        }};
+      }
     });
   }
 
-  /* persistence - STATE MANAGEMENT UPDATED */
+  /* persistence */
   var itemsSig = "0_0";
   function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } 
   
@@ -515,21 +519,16 @@
         var state = restoreState();
         var now = Date.now();
 
-        // Resume Logic
         if (state && state.sig === itemsSig) {
           if (state.manualClose && state.snoozeUntil > now) {
-             // Still snoozed
              setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
           } else if (!state.manualClose) {
-             // Resume from next item immediately (No Delay)
              idx = state.idx + 1;
              startFrom(0); 
           } else {
-             // Snooze expired, start fresh
              startFrom(INIT_MS);
           }
         } else {
-          // First time visitor
           if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
           else startFrom(0);
         }
