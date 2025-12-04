@@ -1,4 +1,4 @@
-/*! both-controller v4.0.3 — Fix Purchase Mapping & Debugging */
+/*! both-controller v4.0.4 — Final Fix for buyerName/productName keys */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -258,15 +258,12 @@
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
       if(as==="purchase") {
-        /* DEBUG: Print raw item to console so we can see keys */
-        console.log("Raw Purchase Item:", x);
-        
+        /* FIXED: Using buyerName and productName from your JSON */
         return { kind:"purchase", data:{
-          /* Trying both lowercase and Uppercase keys + generic fallbacks */
-          buyer: x.buyer || x.Buyer || x.name || x.Name || "לקוח/ה",
-          product: x.product || x.Product || x.title || "מוצר",
-          image: x.image || x.Image || x.productImage || "",
-          purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
+          buyer: x.buyerName || x.buyer || x.name || "לקוח/ה",
+          product: x.productName || x.product || x.title || "מוצר",
+          image: x.productImage || x.image || "",
+          purchased_at: x.purchased_at || new Date().toISOString()
         }};
       }
     });
