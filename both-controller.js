@@ -266,7 +266,7 @@
   }
 
   /* persistence */
-  var STORAGE_KEY = 'evid:widget-state:v1';
+  var STORAGE_KEY = 'evid:widget-state:v2';
   var itemsSig = "0_0";
   function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } // simplified sig
   function saveState(idxShown, sig, opt){
