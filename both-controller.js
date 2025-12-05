@@ -1,4 +1,4 @@
-/*! both-controller v4.0.7 — Timer Fix + Mobile Full Width + Live Dot in Reviews */
+/*! both-controller v4.0.8 — Clean Reviews, Unified Badge, Time Spacing Fix */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -86,7 +86,6 @@
   + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
   + '  opacity: 0; transition: opacity 0.2s;'
   + '}'
-  /* Force X visible everywhere as requested */
   + '.xbtn { opacity: 1!important; }'
 
   /* --- Review Widget Specifics --- */
@@ -136,24 +135,23 @@
   + '}'
   + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
   + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
-  + '.fomo-time { font-size: 11px; }'
+  
+  /* FIXED: Added padding-left to push time away from X button */
+  + '.fomo-time { font-size: 11px; padding-left: 20px; }'
+  
   + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
   + '.product-highlight { font-weight: 500; color: #2563eb; }'
    
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
   
-  /* PULSING DOT ANIMATION (Fixed) */
   + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
   + '.pulsing-dot::after {'
   + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
   + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
   + '}'
-  + '.verified-badge {'
-  + '  font-size: 10px; color: #059669; background: rgba(16, 185, 129, 0.1);'
-  + '  padding: 2px 8px; border-radius: 4px; font-weight: 500; display: flex; align-items: center; gap: 3px;'
-  + '}'
-  /* Timer Bar CSS - Enhanced */
+  /* Removed old verified-badge class as we now use compact-badge everywhere */
+  
   + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
    
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
@@ -163,17 +161,16 @@
      MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
-  /* Force wrap to bottom */
   + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
   
-  /* REVIEWS: Sticky Bottom */
+  /* REVIEWS */
   + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; padding: 12px 14px!important; gap: 4px!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
   
-  /* PURCHASES: Full Width, No Side Space, Only Bottom Margin */
+  /* PURCHASES */
   + '  .purchase-card { width: 100%!important; border-radius: 0!important; margin: 0 0 15px 0!important; height: 85px!important; box-shadow: 0 -2px 10px rgba(0,0,0,0.05)!important; left:0!important; right:0!important; }'
   + '  .course-img-wrapper { width: 75px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
@@ -378,25 +375,10 @@
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
-    // ADDED: Live indicator in review header
-    var nameWrapper = document.createElement("div");
-    nameWrapper.style.display="flex"; nameWrapper.style.flexDirection="column";
-    
+    // Clean name logic (Removed Red Dot from here)
     var name = document.createElement("span"); name.className = "reviewer-name"; 
     name.textContent = item.authorName;
-    
-    var liveSpan = document.createElement("span");
-    liveSpan.style.fontSize="10px"; liveSpan.style.color="#ef4444"; liveSpan.style.display="flex"; liveSpan.style.alignItems="center";
-    liveSpan.innerHTML = '<div class="pulsing-dot" style="width:6px;height:6px;margin-left:4px;"></div> Live Review';
-    
-    nameWrapper.appendChild(name);
-    // nameWrapper.appendChild(liveSpan); // Uncomment if you want live text under name
-    
-    profile.appendChild(nameWrapper);
-    
-    // Or put the dot next to the name
-    var dot = document.createElement("div"); dot.className="pulsing-dot"; dot.style.marginLeft="8px";
-    profile.appendChild(dot);
+    profile.appendChild(name);
     
     header.appendChild(profile);
     
@@ -467,8 +449,10 @@
     body.innerHTML = 'רכש/ה <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
+    
+    // UPDATED: Using compact-badge HTML for unified look
     footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>מבוקש עכשיו</div>'
-                     + '<div class="verified-badge"><span>✓</span> הרשמה מאומתת</div>';
+                     + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
 
     content.appendChild(header);
     content.appendChild(body);
@@ -477,7 +461,6 @@
     var timer = document.createElement("div"); timer.className = "timer-bar";
     var duration = overrideTime ? overrideTime : SHOW_MS;
     
-    // Explicitly set animation duration
     timer.style.animationDuration = (duration/1000) + 's';
     
     card.appendChild(imgWrap);
