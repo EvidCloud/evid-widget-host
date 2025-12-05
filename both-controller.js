@@ -1,4 +1,4 @@
-/*! both-controller v4.0.6 — Page Delay + Mobile Float + Always Visible X */
+/*! both-controller v4.0.7 — Timer Fix + Mobile Full Width + Live Dot in Reviews */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -15,7 +15,6 @@
   var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
-  // New: Delay after page transition before widget appears
   var PAGE_TRANSITION_DELAY = 3000;
   
   var STORAGE_KEY = 'evid:widget-state:v3';
@@ -87,11 +86,8 @@
   + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
   + '  opacity: 0; transition: opacity 0.2s;'
   + '}'
-  
-  /* REQ: Always visible X on Reviews, Hover only on Purchase? 
-     User said "Always appear in reviews widget". I'll apply to review-card specifically. */
-  + '.review-card .xbtn { opacity: 1!important; }'
-  + '.card:hover .xbtn { opacity: 1; }'
+  /* Force X visible everywhere as requested */
+  + '.xbtn { opacity: 1!important; }'
 
   /* --- Review Widget Specifics --- */
   + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
@@ -146,7 +142,9 @@
    
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
-  + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; }'
+  
+  /* PULSING DOT ANIMATION (Fixed) */
+  + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
   + '.pulsing-dot::after {'
   + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
   + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
@@ -155,24 +153,28 @@
   + '  font-size: 10px; color: #059669; background: rgba(16, 185, 129, 0.1);'
   + '  padding: 2px 8px; border-radius: 4px; font-weight: 500; display: flex; align-items: center; gap: 3px;'
   + '}'
-  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; animation: timerShrink 5s linear forwards; }'
+  /* Timer Bar CSS - Enhanced */
+  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
+   
+  + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
+  + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
   /* =========================================
      MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
-  /* General reset for mobile wrap */
+  /* Force wrap to bottom */
   + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
   
-  /* REVIEWS: Sticky Bottom (Full width, no border-radius bottom) */
+  /* REVIEWS: Sticky Bottom */
   + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; padding: 12px 14px!important; gap: 4px!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
   
-  /* PURCHASES: Floating (Margin bottom, Rounded corners) */
-  + '  .purchase-card { width: 94%!important; border-radius: 16px!important; margin-bottom: 12px!important; height: 85px!important; box-shadow: 0 4px 15px rgba(0,0,0,0.1)!important; }'
+  /* PURCHASES: Full Width, No Side Space, Only Bottom Margin */
+  + '  .purchase-card { width: 100%!important; border-radius: 0!important; margin: 0 0 15px 0!important; height: 85px!important; box-shadow: 0 -2px 10px rgba(0,0,0,0.05)!important; left:0!important; right:0!important; }'
   + '  .course-img-wrapper { width: 75px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
   + '  .fomo-name { font-size: 13px!important; }'
@@ -376,9 +378,25 @@
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
+    // ADDED: Live indicator in review header
+    var nameWrapper = document.createElement("div");
+    nameWrapper.style.display="flex"; nameWrapper.style.flexDirection="column";
+    
     var name = document.createElement("span"); name.className = "reviewer-name"; 
     name.textContent = item.authorName;
-    profile.appendChild(name);
+    
+    var liveSpan = document.createElement("span");
+    liveSpan.style.fontSize="10px"; liveSpan.style.color="#ef4444"; liveSpan.style.display="flex"; liveSpan.style.alignItems="center";
+    liveSpan.innerHTML = '<div class="pulsing-dot" style="width:6px;height:6px;margin-left:4px;"></div> Live Review';
+    
+    nameWrapper.appendChild(name);
+    // nameWrapper.appendChild(liveSpan); // Uncomment if you want live text under name
+    
+    profile.appendChild(nameWrapper);
+    
+    // Or put the dot next to the name
+    var dot = document.createElement("div"); dot.className="pulsing-dot"; dot.style.marginLeft="8px";
+    profile.appendChild(dot);
     
     header.appendChild(profile);
     
@@ -458,8 +476,10 @@
 
     var timer = document.createElement("div"); timer.className = "timer-bar";
     var duration = overrideTime ? overrideTime : SHOW_MS;
+    
+    // Explicitly set animation duration
     timer.style.animationDuration = (duration/1000) + 's';
-
+    
     card.appendChild(imgWrap);
     card.appendChild(content);
     card.appendChild(timer);
@@ -546,23 +566,17 @@
         var state = restoreState();
         var now = Date.now();
         
-        // Wrap start logic in 3s delay for page transitions
-        // We calculate WHAT to do now, but execute it later
-        
         var runLogic = function() {
             if (state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
-                 // Snoozed
                  setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
               } else if (!state.manualClose) {
                  var elapsed = now - state.shownAt;
                  if (elapsed < SHOW_MS) {
-                     // Resume same card
                      idx = state.idx; 
                      var remaining = Math.max(1000, SHOW_MS - elapsed); 
                      resumeCard(remaining);
                  } else {
-                     // New card
                      idx = state.idx + 1;
                      startFrom(0); 
                  }
@@ -570,17 +584,14 @@
                  startFrom(INIT_MS);
               }
             } else {
-              // First time
               if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
               else startFrom(0);
             }
         };
 
-        // If it's a fresh page load (persistence exists), delay execution
         if (state && !state.manualClose) {
             setTimeout(runLogic, PAGE_TRANSITION_DELAY);
         } else {
-            // First ever visit or snoozed, just run (snooze has its own timer)
             runLogic();
         }
       });
