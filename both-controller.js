@@ -1,4 +1,4 @@
-/*! both-controller v4.0.8 — Clean Reviews, Unified Badge, Time Spacing Fix */
+/*! both-controller v4.1.0 — Custom Texts Support */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -10,13 +10,18 @@
   /* ---- config ---- */
   var REVIEWS_EP    = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
   var PURCHASES_EP = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
-  var SHOW_MS    = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))        || 15000);
-  var GAP_MS     = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
-  var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
+  var SHOW_MS     = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))        || 15000);
+  var GAP_MS      = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
+  var INIT_MS     = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
-  var PAGE_TRANSITION_DELAY = 3000;
+  // === NEW: Custom Text Configuration ===
+  // ברירת מחדל: "מבוקש עכשיו"
+  var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
+  // ברירת מחדל: "רכש/ה" (המוצר יופיע אחרי זה)
+  var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
+  var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
 
   if (!REVIEWS_EP && !PURCHASES_EP) {
@@ -150,7 +155,6 @@
   + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
   + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
   + '}'
-  /* Removed old verified-badge class as we now use compact-badge everywhere */
   
   + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
    
@@ -158,7 +162,7 @@
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
   /* =========================================
-     MOBILE OPTIMIZATIONS
+      MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
@@ -443,16 +447,17 @@
     
     var header = document.createElement("div"); header.className = "fomo-header";
     header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>'
-                     + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
+                      + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
     
     var body = document.createElement("div"); body.className = "fomo-body";
-    body.innerHTML = 'רכש/ה <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
+    // === UPDATED: Uses TXT_BOUGHT variable ===
+    body.innerHTML = escapeHTML(TXT_BOUGHT) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
     
-    // UPDATED: Using compact-badge HTML for unified look
-    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>מבוקש עכשיו</div>'
-                     + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
+    // === UPDATED: Uses TXT_LIVE variable ===
+    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
+                      + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
 
     content.appendChild(header);
     content.appendChild(body);
