@@ -1,4 +1,4 @@
-/*! both-controller v4.0.8 — Clean Reviews, Unified Badge, Time Spacing Fix */
+/*! both-controller v4.1.0 — Base64 Config (Clean Embed Code) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -7,21 +7,82 @@
   var scripts = document.scripts;
   var scriptEl = document.currentScript || scripts[scripts.length - 1];
 
-  /* ---- config ---- */
-  var REVIEWS_EP    = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
-  var PURCHASES_EP = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
-  var SHOW_MS    = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))        || 15000);
-  var GAP_MS     = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
-  var INIT_MS    = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
-  var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
+  /* =========================
+     1. DECODE CONFIGURATION
+     ========================= */
+  var rawConfig = scriptEl && scriptEl.getAttribute("data-config");
+  var CFG = {};
   
-  var PAGE_TRANSITION_DELAY = 3000;
-  
-  var STORAGE_KEY = 'evid:widget-state:v3';
+  if (rawConfig) {
+    try {
+      // Decode Base64 with UTF-8 support
+      var json = decodeURIComponent(escape(window.atob(rawConfig)));
+      CFG = JSON.parse(json);
+    } catch (e) {
+      console.error("EvidWidget: Config Error", e);
+    }
+  }
 
-  if (!REVIEWS_EP && !PURCHASES_EP) {
-    root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Missing endpoints.</div>';
+  // --- Extract Params with Defaults ---
+  var SLUG         = CFG.slug || (scriptEl && scriptEl.getAttribute("data-slug")); // Fallback
+  
+  // Endpoints (Assuming standard structure based on Slug)
+  // If you host the API, hardcode the base URL here to save space in the embed code
+  var API_BASE     = "https://review-widget-psi.vercel.app/api"; 
+  var REVIEWS_EP   = SLUG ? (API_BASE + "/data/" + SLUG + ".json") : null;
+  var PURCHASES_EP = SLUG ? (API_BASE + "/purchases?slug=" + SLUG) : null;
+
+  // Logic Settings
+  var SHOW_MS      = Number(CFG.show || 15000);
+  var GAP_MS       = Number(CFG.gap  || 6000);
+  var INIT_MS      = Number(CFG.init || 0);
+  var TYPE         = CFG.type || "reviews"; // reviews, purchases, both
+  
+  // Texts & Localization
+  var TXT_LIVE     = CFG.live   || "מבוקש עכשיו";
+  var TXT_ACTION   = CFG.action || "רכש/ה";
+  var SMART_GENDER = (CFG.smartGen === 1);
+
+  // Visuals (Colors)
+  var CLR_PRIMARY  = CFG.pColor || "#6366f1";
+  var CLR_ACCENT   = CFG.sColor || "#7c3aed";
+  var CLR_TEXT     = CFG.tColor || "#0f172a";
+  var CLR_BG       = CFG.bg     || "rgba(255, 255, 255, 0.85)";
+  if (CFG.bg === "transparent") CLR_BG = "rgba(255,255,255,0.01)";
+
+  var PAGE_TRANSITION_DELAY = 3000;
+  var DISMISS_COOLDOWN_MS = 45000;
+  var STORAGE_KEY = 'evid:widget-state:v4';
+
+  if (!SLUG) {
+    root.innerHTML = '<div style="display:none">EvidWidget: Missing configuration.</div>';
     return;
+  }
+
+  /* =========================
+     Smart Gender Dictionary
+     ========================= */
+  var FEMALE_NAMES = new Set([
+    "אביב","אביגיל","אביה","אבישג","אגם","אדווה","אדל","אודיה","אופיר","אור","אורה","אורלי","אורן","אורית","אושרי","איילת","אילנה","אליאנה","אליה","אלין","אליענה","אלישבע","אמה","אמונה","אמילי","אסתר","אפרת","אריאל","אלה","אלונה","אנאל","אנה","אסנת","אתי",
+    "בלה","בר","בתיה","בתאל","גאיה","גבריאלה","גילה","גילת","גלי","גליה","גפן","דבורה","דנה","דניאל","דניאלה","דפנה","דקלה","דר","הדר","הודיה","הילה","הילי","הגר","זהבה","זוהר","זיו","חביבה","חגית","חדווה","חן","חנה","חני","טליה","טל","טוהר","טהר","טובה",
+    "יהודית","יהל","יהלי","יובל","יוכבד","יונה","יונת","יונית","יולי","ימית","יערה","יעל","יעלה","יפה","יפית","יסמין","ירדן","ירוס","כוכבה","כרמל","כרמלה","לבנה","לי","ליאור","ליאורה","ליאן","ליב","ליבי","ליגל","ליה","ליהי","ליהיא","לילך","לינוי","לינור","ליעד","לירון","לירז","ליאת",
+    "מאיה","מאי","מבשרת","מגי","מור","מורן","מוריה","מזל","מיטל","מיכל","מילי","מיה","מיקה","מירי","מירב","מיתר","מלכה","מעיין","מרי","מריה","מרינה","מרים","מרגלית","משי","מתן","נועה","נוגה","נויה","נוית","נועם","נורית","נטלי","נטע","נינט","נילי","ניצן","ניר","נירה","נעמה","נעמי","נחמה","נטלי",
+    "סיגל","סיון","סיוון","סימה","ספיר","סתיו","עדי","עדן","עופרי","עופרה","ענבל","ענת","עמית","עמליה","ענבר","עפרה","ערבה","פז","פזית","פנינה","פרח","צביה","צופיה","צליל","ציפי","ציפורה","קארין","קרן","קרין","רביד","רווית","רוית","רומי","רוני","רונית","רות","רותם","רותי","רחל","רחלי","ריבי","רינת","ריקי","רננה","רעות","רבקה",
+    "שגית","שוהם","שולה","שולמית","שונטל","שי","שיר","שירה","שירז","שירלי","שירן","שלומית","שמחה","שני","שפרה","שקד","שקמה","שרה","שרי","שרון","תהל","תהילה","תומר","תמרה","תמר","תקוה","תכלת"
+  ]);
+
+  function getActionText(name, defaultAction) {
+    if (!SMART_GENDER) return defaultAction;
+    var firstName = (name || "").trim().split(" ")[0].replace(/['"״׳]/g, "");
+    if (FEMALE_NAMES.has(firstName)) {
+      if (defaultAction.includes("רכש")) return defaultAction.replace("רכש/ה", "רכשה").replace("רכש", "רכשה");
+      if (defaultAction.includes("קנה")) return defaultAction.replace("קנה", "קנתה");
+      if (defaultAction.includes("הצטרף")) return defaultAction.replace("הצטרף", "הצטרפה");
+      if (defaultAction.includes("נרשם")) return defaultAction.replace("נרשם", "נרשמה");
+      if (defaultAction.includes("הזמין")) return defaultAction.replace("הזמין", "הזמינה");
+      return defaultAction + " (ה)";
+    }
+    return defaultAction.replace("/ה", "");
   }
 
   /* =========================
@@ -41,7 +102,7 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles ========== */
+  /* ========== styles (Dynamic) ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -60,7 +121,7 @@
   + '.card {'
   + '  position: relative;'
   + '  width: 340px; max-width: 90vw;'
-  + '  background: rgba(255, 255, 255, 0.85);' 
+  + '  background: ' + CLR_BG + ';' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
   + '  border-radius: 16px;'
@@ -72,21 +133,26 @@
   + '}'
   + '.card:hover { transform: translateY(-5px); }'
 
-  /* Animations */
-  + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
-  + '@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(50px); } }'
-
   /* Close Button */
   + '.xbtn {'
   + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
   + '  background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none;'
   + '  display: flex; align-items: center; justify-content: center;'
   + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
-  + '  opacity: 0; transition: opacity 0.2s;'
+  + '  opacity: 1!important; transition: opacity 0.2s;'
   + '}'
-  + '.xbtn { opacity: 1!important; }'
+
+  /* --- Text Colors --- */
+  + '.reviewer-name, .fomo-name { font-weight: 700; font-size: 15px; color: '+ CLR_TEXT +'; line-height: 1.2; }'
+  + '.review-text, .fomo-body { font-size: 13px; line-height: 1.5; color: '+ CLR_TEXT +'; opacity: 0.9; margin: 0; }'
+  + '.product-highlight { font-weight: 500; color: '+ CLR_PRIMARY +'; }'
+  + '.read-more-btn { color: '+ CLR_PRIMARY +'; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; outline: none!important; }'
+
+  /* Animations */
+  + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
+  + '@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(50px); } }'
 
   /* --- Review Widget Specifics --- */
   + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
@@ -94,65 +160,29 @@
   + '.user-profile { display: flex; align-items: center; gap: 10px; }'
   + '.review-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7; }'
   + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
-  + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
-   
-  /* Text & Read More */
-  + '.review-text {'
-  + '  font-size: 13px; line-height: 1.5; color: #374151; margin: 0;'
-  + '  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
-  + '  transition: all 0.3s ease;'
-  + '}'
+  + '.review-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
   + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
-  + '.read-more-btn {'
-  + '  font-size: 12px; color: #2563eb; font-weight: 700; cursor: pointer;'
-  + '  background: transparent!important; border: none; padding: 5px 0; align-self: flex-start;'
-  + '  outline: none!important;'
-  + '}'
-  + '.read-more-btn:hover { text-decoration: underline; }'
 
   /* Footer */
-  + '.review-footer {'
-  + '  display: flex; justify-content: space-between; align-items: center;'
-  + '  border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px;'
-  + '}'
+  + '.review-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px; }'
   + '.stars-wrapper { display: flex; align-items: center; gap: 8px; }'
   + '.stars { color: #d97706; font-size: 13px; letter-spacing: 1px; font-weight:bold; }'
   + '.google-icon { width: 16px; height: 16px; opacity: 1; display:block; }'
-  + '.compact-badge {'
-  + '  background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px;'
-  + '  font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px;'
-  + '}'
+  + '.compact-badge { background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }'
 
   /* --- Purchase Widget Specifics --- */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
   + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
   + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
   + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
-   
-  + '.p-content {'
-  + '  flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column;'
-  + '  justify-content: center; gap: 2px; text-align: right; height: 100%;'
-  + '}'
+  + '.p-content { flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: right; height: 100%; }'
   + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
-  + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
-  
-  /* FIXED: Added padding-left to push time away from X button */
   + '.fomo-time { font-size: 11px; padding-left: 20px; }'
-  
-  + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
-  + '.product-highlight { font-weight: 500; color: #2563eb; }'
-   
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
-  
   + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
-  + '.pulsing-dot::after {'
-  + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
-  + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
-  + '}'
-  /* Removed old verified-badge class as we now use compact-badge everywhere */
-  
-  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
+  + '.pulsing-dot::after { content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6; }'
+  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, '+CLR_PRIMARY+', '+CLR_ACCENT+'); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
    
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
@@ -162,15 +192,11 @@
      ========================================= */
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
-  
-  /* REVIEWS */
   + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; padding: 12px 14px!important; gap: 4px!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
-  
-  /* PURCHASES */
   + '  .purchase-card { width: 100%!important; border-radius: 0!important; margin: 0 0 15px 0!important; height: 85px!important; box-shadow: 0 -2px 10px rgba(0,0,0,0.05)!important; left:0!important; right:0!important; }'
   + '  .course-img-wrapper { width: 75px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
@@ -235,7 +261,7 @@
     return Promise.resolve();
   }
 
-  /* fetchers */
+  /* fetchers (using endpoints from config) */
   var JS_MIRRORS = ["https://cdn.jsdelivr.net","https://fastly.jsdelivr.net","https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror){ try { var a=new URL(u), m=new URL(mirror); a.protocol=m.protocol; a.host=m.host; return a.toString(); } catch(_){ return u; } }
   function fetchTextWithMirrors(u){
@@ -301,6 +327,11 @@
   function restoreState(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; } }
 
   function interleave(reviews, purchases){
+    // Use TYPE config to decide what to show
+    if (TYPE === "reviews") return reviews;
+    if (TYPE === "purchases") return purchases;
+    
+    // Both
     var out=[], i=0, j=0;
     while(i<reviews.length || j<purchases.length){
       if(i<reviews.length){ out.push(reviews[i++]); }
@@ -375,7 +406,6 @@
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
-    // Clean name logic (Removed Red Dot from here)
     var name = document.createElement("span"); name.className = "reviewer-name"; 
     name.textContent = item.authorName;
     profile.appendChild(name);
@@ -446,12 +476,14 @@
                      + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
     
     var body = document.createElement("div"); body.className = "fomo-body";
-    body.innerHTML = 'רכש/ה <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
+    
+    // ACTION TEXT LOGIC
+    var finalAction = getActionText(p.buyer, TXT_ACTION);
+    body.innerHTML = escapeHTML(finalAction) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
     
-    // UPDATED: Using compact-badge HTML for unified look
-    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>מבוקש עכשיו</div>'
+    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
                      + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
 
     content.appendChild(header);
