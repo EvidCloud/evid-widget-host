@@ -1,4 +1,4 @@
-/*! both-controller v4.1.0 — Custom Texts Support */
+/*! both-controller v4.3.0 — Full Width Mobile + Gender Detection */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -15,10 +15,8 @@
   var INIT_MS     = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
-  // === NEW: Custom Text Configuration ===
-  // ברירת מחדל: "מבוקש עכשיו"
+  // Custom Text Defaults
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
-  // ברירת מחדל: "רכש/ה" (המוצר יופיע אחרי זה)
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
   var PAGE_TRANSITION_DELAY = 3000;
@@ -27,6 +25,24 @@
   if (!REVIEWS_EP && !PURCHASES_EP) {
     root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Missing endpoints.</div>';
     return;
+  }
+
+  /* =========================
+      DATA: Hebrew Names DB
+     ========================= */
+  // רשימת שמות נפוצים לזיהוי מגדרי מהיר
+  var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
+  var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
+
+  function getGenderedVerb(name, defaultText) {
+      if (!name) return defaultText;
+      // לוקחים רק את המילה הראשונה (השם הפרטי) ומנקים רווחים
+      var first = name.trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
+      
+      if (DB_MALE.indexOf(first) > -1) return "רכש"; // זיהוי גבר
+      if (DB_FEMALE.indexOf(first) > -1) return "רכשה"; // זיהוי אישה
+      
+      return defaultText; // לא זוהה -> משתמשים בברירת המחדל (רכש/ה)
   }
 
   /* =========================
@@ -140,8 +156,6 @@
   + '}'
   + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
   + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
-  
-  /* FIXED: Added padding-left to push time away from X button */
   + '.fomo-time { font-size: 11px; padding-left: 20px; }'
   
   + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
@@ -162,20 +176,24 @@
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
   /* =========================================
-      MOBILE OPTIMIZATIONS
+      MOBILE OPTIMIZATIONS (UPDATED)
      ========================================= */
   + '@media (max-width:480px){'
-  + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
+  /* 1. right/left: 0 + width: 100% -> מתיחה לכל רוחב המסך
+     2. bottom: 20px -> שומר על המרווח מהלמטה
+     3. padding: 0 10px -> כדי שלא ידבק לקצוות המסך ממש
+  */
+  + '  .wrap { right:0!important; left:0!important; width:100%!important; bottom:20px!important; padding: 0 10px!important; display:flex!important; justify-content:center!important; }'
   
   /* REVIEWS */
-  + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; padding: 12px 14px!important; gap: 4px!important; }'
+  + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px!important; padding: 12px 14px!important; gap: 4px!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
   
   /* PURCHASES */
-  + '  .purchase-card { width: 100%!important; border-radius: 0!important; margin: 0 0 15px 0!important; height: 85px!important; box-shadow: 0 -2px 10px rgba(0,0,0,0.05)!important; left:0!important; right:0!important; }'
+  + '  .purchase-card { width: 100%!important; margin: 0!important; height: 85px!important; box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important; }'
   + '  .course-img-wrapper { width: 75px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
   + '  .fomo-name { font-size: 13px!important; }'
@@ -379,7 +397,7 @@
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
-    // Clean name logic (Removed Red Dot from here)
+    // Clean name logic
     var name = document.createElement("span"); name.className = "reviewer-name"; 
     name.textContent = item.authorName;
     profile.appendChild(name);
@@ -450,12 +468,15 @@
                       + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
     
     var body = document.createElement("div"); body.className = "fomo-body";
-    // === UPDATED: Uses TXT_BOUGHT variable ===
-    body.innerHTML = escapeHTML(TXT_BOUGHT) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
+    
+    // === NEW: Gender Detection Logic ===
+    var dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
+    
+    body.innerHTML = escapeHTML(dynamicVerb) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
     
-    // === UPDATED: Uses TXT_LIVE variable ===
+    // Uses TXT_LIVE variable
     footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
                       + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
 
