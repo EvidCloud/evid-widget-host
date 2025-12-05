@@ -1,4 +1,4 @@
-/*! both-controller v4.7.0 — Desktop Float / Mobile Reviews Stick */
+/*! both-controller v4.8.0 — FINAL FIX: Mobile Review Stick 0px */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -73,7 +73,8 @@
   + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
   + '  direction:rtl;'
   + '  pointer-events:none;' 
-  + '  display: block;' 
+  + '  display: block;'
+  + '  transition: bottom 0.3s ease;' /* Smooth transition if position changes */
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
@@ -179,7 +180,9 @@
       MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
-  /* Mobile: Full width and centered. We remove explicit bottom here and control via JS */
+  /* Mobile: Full width and centered. 
+     IMPORTANT: We do NOT set 'bottom' here. We let JS control it dynamically.
+  */
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
   
   + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
@@ -510,25 +513,17 @@
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
-      // === LOGIC: Check Device Width for Positioning ===
+      // === LOGIC: STICKY BOTTOM FOR MOBILE REVIEWS ONLY ===
       var isMobile = window.innerWidth <= 480;
 
-      if (isMobile) {
-          // *** MOBILE ***
-          if (itm.kind === "review") {
-             // Reviews stick to bottom on Mobile
-             wrap.style.bottom = "0px";
-             card.style.borderRadius = "16px 16px 0 0"; // Flat bottom
-          } else {
-             // Purchases still float on Mobile (with 20px gap)
-             wrap.style.bottom = "20px";
-             card.style.borderRadius = "16px"; 
-          }
+      if (isMobile && itm.kind === "review") {
+          // *** MOBILE + REVIEW = STICK TO FLOOR ***
+          wrap.style.bottom = "0px";
+          card.style.borderRadius = "16px 16px 0 0"; // Square bottom corners
       } else {
-          // *** DESKTOP / LARGE SCREENS ***
-          // Everything floats
+          // *** EVERYTHING ELSE (Desktop OR Mobile Purchases) = FLOAT ***
           wrap.style.bottom = "20px";
-          card.style.borderRadius = "16px";
+          card.style.borderRadius = "16px"; // Regular corners
       }
       
       wrap.innerHTML=""; 
