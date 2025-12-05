@@ -1,4 +1,4 @@
-/*! both-controller v4.3.0 — Full Width Mobile + Gender Detection */
+/*! both-controller v4.4.0 — Fixed Positioning Logic */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -10,8 +10,8 @@
   /* ---- config ---- */
   var REVIEWS_EP    = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
   var PURCHASES_EP = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
-  var SHOW_MS     = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))        || 15000);
-  var GAP_MS      = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))         || 6000);
+  var SHOW_MS     = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))         || 15000);
+  var GAP_MS      = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))          || 6000);
   var INIT_MS     = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
@@ -30,19 +30,17 @@
   /* =========================
       DATA: Hebrew Names DB
      ========================= */
-  // רשימת שמות נפוצים לזיהוי מגדרי מהיר
   var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
   var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
   function getGenderedVerb(name, defaultText) {
       if (!name) return defaultText;
-      // לוקחים רק את המילה הראשונה (השם הפרטי) ומנקים רווחים
       var first = name.trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
       
-      if (DB_MALE.indexOf(first) > -1) return "רכש"; // זיהוי גבר
-      if (DB_FEMALE.indexOf(first) > -1) return "רכשה"; // זיהוי אישה
+      if (DB_MALE.indexOf(first) > -1) return "רכש"; 
+      if (DB_FEMALE.indexOf(first) > -1) return "רכשה"; 
       
-      return defaultText; // לא זוהה -> משתמשים בברירת המחדל (רכש/ה)
+      return defaultText; 
   }
 
   /* =========================
@@ -71,9 +69,10 @@
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
-  + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
+  + '  position:fixed; bottom:20px; right:0; left:0; width:100%; z-index:2147483000;' /* Force full width default */
   + '  direction:rtl;'
   + '  pointer-events:none;' 
+  + '  display: flex; justify-content: center;' /* Center items by default */
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
@@ -81,7 +80,7 @@
   + '.card {'
   + '  position: relative;'
   + '  width: 340px; max-width: 90vw;'
-  + '  background: rgba(255, 255, 255, 0.85);' 
+  + '  background: rgba(255, 255, 255, 0.95);' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
   + '  border-radius: 16px;'
@@ -94,10 +93,11 @@
   + '.card:hover { transform: translateY(-5px); }'
 
   /* Animations */
-  + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
-  + '@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(50px); } }'
+  + '.enter { animation: slideInUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  + '.leave { animation: slideOutDown 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
+  /* Changed animations to Up/Down since we are full width/centered usually */
+  + '@keyframes slideInUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }'
+  + '@keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(50px); } }'
 
   /* Close Button */
   + '.xbtn {'
@@ -176,17 +176,14 @@
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
   /* =========================================
-      MOBILE OPTIMIZATIONS (UPDATED)
+      MOBILE OPTIMIZATIONS (FIXED)
      ========================================= */
   + '@media (max-width:480px){'
-  /* 1. right/left: 0 + width: 100% -> מתיחה לכל רוחב המסך
-     2. bottom: 20px -> שומר על המרווח מהלמטה
-     3. padding: 0 10px -> כדי שלא ידבק לקצוות המסך ממש
-  */
-  + '  .wrap { right:0!important; left:0!important; width:100%!important; bottom:20px!important; padding: 0 10px!important; display:flex!important; justify-content:center!important; }'
+  /* הסרתי את ה-important מה-bottom כדי שה-JS יוכל לשלוט עליו */
+  + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; bottom: 20px; }'
   
-  /* REVIEWS */
-  + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px!important; padding: 12px 14px!important; gap: 4px!important; }'
+  /* REVIEWS - Full width, square corners logic handled in JS, but here we set defaults */
+  + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
@@ -384,7 +381,7 @@
   }
 
   /* ---- RENDERERS ---- */
-   
+    
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
@@ -514,6 +511,20 @@
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
+      // === כאן השינוי המרכזי: שליטה במיקום לפי סוג הכרטיס ===
+      if(itm.kind === "review") {
+          // ביקורות: נצמד למטה לגמרי (0)
+          wrap.style.bottom = "0px";
+          // ביטול פינות עגולות לכרטיס עצמו אם רוצים שייראה "מודבק" (אופציונלי, כרגע השארתי עם פינות)
+          card.style.borderBottomLeftRadius = "0";
+          card.style.borderBottomRightRadius = "0";
+      } else {
+          // רכישות: רווח של 20 פיקסל מלמטה
+          wrap.style.bottom = "20px";
+          card.style.borderRadius = "16px"; // מחזיר פינות רגילות
+      }
+      // =======================================================
+
       wrap.innerHTML=""; 
       wrap.appendChild(card);
       currentCard = card;
@@ -578,19 +589,19 @@
         var runLogic = function() {
             if (state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
-                 setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
+                  setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
               } else if (!state.manualClose) {
-                 var elapsed = now - state.shownAt;
-                 if (elapsed < SHOW_MS) {
-                     idx = state.idx; 
-                     var remaining = Math.max(1000, SHOW_MS - elapsed); 
-                     resumeCard(remaining);
-                 } else {
-                     idx = state.idx + 1;
-                     startFrom(0); 
-                 }
+                  var elapsed = now - state.shownAt;
+                  if (elapsed < SHOW_MS) {
+                      idx = state.idx; 
+                      var remaining = Math.max(1000, SHOW_MS - elapsed); 
+                      resumeCard(remaining);
+                  } else {
+                      idx = state.idx + 1;
+                      startFrom(0); 
+                  }
               } else {
-                 startFrom(INIT_MS);
+                  startFrom(INIT_MS);
               }
             } else {
               if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
