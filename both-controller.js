@@ -1,4 +1,4 @@
-/*! both-controller v3.9.9995 — Hebrew URL Fix + Base64 Config */
+/*! both-controller v4.2.0 — STABLE MVP (Explicit Attributes) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -7,64 +7,41 @@
   var scripts = document.scripts;
   var scriptEl = document.currentScript || scripts[scripts.length - 1];
 
-  /* =========================
-     1. DECODE CONFIGURATION
-     ========================= */
-  var rawConfig = scriptEl && scriptEl.getAttribute("data-config");
-  var CFG = {};
+  /* ---- קריאת הגדרות (חזרה לשיטה הישנה והבטוחה) ---- */
+  var REVIEWS_EP    = scriptEl.getAttribute("data-reviews-endpoint");
+  var PURCHASES_EP  = scriptEl.getAttribute("data-purchases-endpoint");
   
-  if (rawConfig) {
-    try {
-      // פענוח Base64 עם תמיכה מלאה בעברית (UTF-8)
-      var json = decodeURIComponent(escape(window.atob(rawConfig)));
-      CFG = JSON.parse(json);
-    } catch (e) {
-      console.error("EvidWidget: Config Error", e);
-    }
+  var SHOW_MS       = Number(scriptEl.getAttribute("data-show-ms") || 15000);
+  var GAP_MS        = Number(scriptEl.getAttribute("data-gap-ms")  || 6000);
+  var INIT_MS       = Number(scriptEl.getAttribute("data-init-delay-ms") || 0);
+  
+  // הגדרות טקסט ועיצוב חדשות
+  var TXT_LIVE      = scriptEl.getAttribute("data-txt-live")   || "מבוקש עכשיו";
+  var TXT_ACTION    = scriptEl.getAttribute("data-txt-action") || "רכש/ה";
+  var SMART_GENDER  = scriptEl.getAttribute("data-gender-detect") === "1";
+
+  var CLR_PRIMARY   = scriptEl.getAttribute("data-primary-color") || "#6366f1";
+  var CLR_ACCENT    = scriptEl.getAttribute("data-accent-color")  || "#7c3aed";
+  var CLR_TEXT      = scriptEl.getAttribute("data-text-color")    || "#0f172a";
+  var CLR_BG        = scriptEl.getAttribute("data-bg-color")      || "rgba(255, 255, 255, 0.85)";
+  
+  // אם הרקע הוגדר כשקוף
+  if (scriptEl.getAttribute("data-bg-transparent") === "1") {
+      CLR_BG = "rgba(255,255,255,0.01)";
   }
 
-  // חילוץ משתנים
-  var SLUG = CFG.slug || (scriptEl && scriptEl.getAttribute("data-slug"));
-  
-  // כתובת ה-API - שים לב לקידוד ה-SLUG
-  var API_BASE = "https://review-widget-psi.vercel.app/api"; 
-  // FIX: Added encodeURIComponent to handle Hebrew slugs correctly
-  var REVIEWS_EP   = SLUG ? (API_BASE + "/data/" + encodeURIComponent(SLUG) + ".json") : null;
-  var PURCHASES_EP = SLUG ? (API_BASE + "/purchases?slug=" + encodeURIComponent(SLUG)) : null;
-
-  // הגדרות
-  var SHOW_MS      = Number(CFG.show || 15000);
-  var GAP_MS       = Number(CFG.gap  || 6000);
-  var INIT_MS      = Number(CFG.init || 0);
-  var TYPE         = CFG.type || "reviews"; 
-  
-  var TXT_LIVE     = CFG.live   || "מבוקש עכשיו";
-  var TXT_ACTION   = CFG.action || "רכש/ה";
-  var SMART_GENDER = (CFG.smartGen === 1);
-
-  var CLR_PRIMARY  = CFG.pColor || "#6366f1";
-  var CLR_ACCENT   = CFG.sColor || "#7c3aed";
-  var CLR_TEXT     = CFG.tColor || "#0f172a";
-  var CLR_BG       = CFG.bg     || "rgba(255, 255, 255, 0.85)";
-  if (CFG.bg === "transparent") CLR_BG = "rgba(255,255,255,0.01)";
-
-  var PAGE_TRANSITION_DELAY = 3000;
   var DISMISS_COOLDOWN_MS = 45000;
-  var STORAGE_KEY = 'evid:widget-state:v4';
+  var STORAGE_KEY = 'evid:widget-state:v5'; // Bumped version to clear old cache
 
-  if (!SLUG) return;
+  if (!REVIEWS_EP && !PURCHASES_EP) {
+    root.innerHTML = '<div style="display:none">Missing endpoints</div>';
+    return;
+  }
 
   /* =========================
-     Smart Gender Dictionary
+     מילון שמות (זיהוי מגדרי)
      ========================= */
-  var FEMALE_NAMES = new Set([
-    "אביב","אביגיל","אביה","אבישג","אגם","אדווה","אדל","אודיה","אופיר","אור","אורה","אורלי","אורן","אורית","אושרי","איילת","אילנה","אליאנה","אליה","אלין","אליענה","אלישבע","אמה","אמונה","אמילי","אסתר","אפרת","אריאל","אלה","אלונה","אנאל","אנה","אסנת","אתי",
-    "בלה","בר","בתיה","בתאל","גאיה","גבריאלה","גילה","גילת","גלי","גליה","גפן","דבורה","דנה","דניאל","דניאלה","דפנה","דקלה","דר","הדר","הודיה","הילה","הילי","הגר","זהבה","זוהר","זיו","חביבה","חגית","חדווה","חן","חנה","חני","טליה","טל","טוהר","טהר","טובה",
-    "יהודית","יהל","יהלי","יובל","יוכבד","יונה","יונת","יונית","יולי","ימית","יערה","יעל","יעלה","יפה","יפית","יסמין","ירדן","ירוס","כוכבה","כרמל","כרמלה","לבנה","לי","ליאור","ליאורה","ליאן","ליב","ליבי","ליגל","ליה","ליהי","ליהיא","לילך","לינוי","לינור","ליעד","לירון","לירז","ליאת",
-    "מאיה","מאי","מבשרת","מגי","מור","מורן","מוריה","מזל","מיטל","מיכל","מילי","מיה","מיקה","מירי","מירב","מיתר","מלכה","מעיין","מרי","מריה","מרינה","מרים","מרגלית","משי","מתן","נועה","נוגה","נויה","נוית","נועם","נורית","נטלי","נטע","נינט","נילי","ניצן","ניר","נירה","נעמה","נעמי","נחמה","נטלי",
-    "סיגל","סיון","סיוון","סימה","ספיר","סתיו","עדי","עדן","עופרי","עופרה","ענבל","ענת","עמית","עמליה","ענבר","עפרה","ערבה","פז","פזית","פנינה","פרח","צביה","צופיה","צליל","ציפי","ציפורה","קארין","קרן","קרין","רביד","רווית","רוית","רומי","רוני","רונית","רות","רותם","רותי","רחל","רחלי","ריבי","רינת","ריקי","רננה","רעות","רבקה",
-    "שגית","שוהם","שולה","שולמית","שונטל","שי","שיר","שירה","שירז","שירלי","שירן","שלומית","שמחה","שני","שפרה","שקד","שקמה","שרה","שרי","שרון","תהל","תהילה","תומר","תמרה","תמר","תקוה","תכלת"
-  ]);
+  var FEMALE_NAMES = new Set(["אביב","אביגיל","אביה","אבישג","אגם","אדווה","אדל","אודיה","אופיר","אור","אורה","אורלי","אורן","אורית","אושרי","איילת","אילנה","אליאנה","אליה","אלין","אליענה","אלישבע","אמה","אמונה","אמילי","אסתר","אפרת","אריאל","אלה","אלונה","אנאל","אנה","אסנת","אתי","בלה","בר","בתיה","בתאל","גאיה","גבריאלה","גילה","גילת","גלי","גליה","גפן","דבורה","דנה","דניאל","דניאלה","דפנה","דקלה","דר","הדר","הודיה","הילה","הילי","הגר","זהבה","זוהר","זיו","חביבה","חגית","חדווה","חן","חנה","חני","טליה","טל","טוהר","טהר","טובה","יהודית","יהל","יהלי","יובל","יוכבד","יונה","יונת","יונית","יולי","ימית","יערה","יעל","יעלה","יפה","יפית","יסמין","ירדן","ירוס","כוכבה","כרמל","כרמלה","לבנה","לי","ליאור","ליאורה","ליאן","ליב","ליבי","ליגל","ליה","ליהי","ליהיא","לילך","לינוי","לינור","ליעד","לירון","לירז","ליאת","מאיה","מאי","מבשרת","מגי","מור","מורן","מוריה","מזל","מיטל","מיכל","מילי","מיה","מיקה","מירי","מירב","מיתר","מלכה","מעיין","מרי","מריה","מרינה","מרים","מרגלית","משי","מתן","נועה","נוגה","נויה","נוית","נועם","נורית","נטלי","נטע","נינט","נילי","ניצן","ניר","נירה","נעמה","נעמי","נחמה","נטלי","סיגל","סיון","סיוון","סימה","ספיר","סתיו","עדי","עדן","עופרי","עופרה","ענבל","ענת","עמית","עמליה","ענבר","עפרה","ערבה","פז","פזית","פנינה","פרח","צביה","צופיה","צליל","ציפי","ציפורה","קארין","קרן","קרין","רביד","רווית","רוית","רומי","רוני","רונית","רות","רותם","רותי","רחל","רחלי","ריבי","רינת","ריקי","רננה","רעות","רבקה","שגית","שוהם","שולה","שולמית","שונטל","שי","שיר","שירה","שירז","שירלי","שירן","שלומית","שמחה","שני","שפרה","שקד","שקמה","שרה","שרי","שרון","תהל","תהילה","תומר","תמרה","תמר","תקוה","תכלת"]);
 
   function getActionText(name, defaultAction) {
     if (!SMART_GENDER) return defaultAction;
@@ -74,24 +51,17 @@
       if (defaultAction.includes("קנה")) return defaultAction.replace("קנה", "קנתה");
       if (defaultAction.includes("הצטרף")) return defaultAction.replace("הצטרף", "הצטרפה");
       if (defaultAction.includes("נרשם")) return defaultAction.replace("נרשם", "נרשמה");
-      if (defaultAction.includes("הזמין")) return defaultAction.replace("הזמין", "הזמינה");
       return defaultAction + " (ה)";
     }
     return defaultAction.replace("/ה", "");
   }
 
-  /* =========================
-      Styles & Fonts
-     ========================= */
+  /* Font & Styles */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
   function ensureFontInHead(){
     try{
       if (!document.getElementById('evid-rubik-font')) {
-        var link = document.createElement('link');
-        link.id = 'evid-rubik-font';
-        link.rel = 'stylesheet';
-        link.href = FONT_HREF;
-        document.head.appendChild(link);
+        var link = document.createElement('link'); link.id = 'evid-rubik-font'; link.rel = 'stylesheet'; link.href = FONT_HREF; document.head.appendChild(link);
       }
       return Promise.resolve(); 
     }catch(_){ return Promise.resolve(); }
@@ -100,41 +70,16 @@
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
-  + ':host, :host *, .wrap, .wrap * {'
-  + '  font-family:"Rubik",ui-sans-serif,system-ui,-apple-system,sans-serif!important;'
-  + '  box-sizing: border-box;'
-  + '}'
-  + '.wrap{'
-  + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
-  + '  direction:rtl;'
-  + '  pointer-events:none;' 
-  + '}'
+  + ':host, :host *, .wrap, .wrap * { font-family:"Rubik",ui-sans-serif,system-ui,-apple-system,sans-serif!important; box-sizing: border-box; }'
+  + '.wrap{ position:fixed; bottom:20px; right:20px; z-index:2147483000; direction:rtl; pointer-events:none; }'
   + '.wrap.ready{visibility:visible;opacity:1;}'
-  + '.card {'
-  + '  position: relative;'
-  + '  width: 340px; max-width: 90vw;'
-  + '  background: ' + CLR_BG + ';' 
-  + '  backdrop-filter: blur(20px) saturate(180%);'
-  + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
-  + '  border-radius: 16px;'
-  + '  border: 1px solid rgba(255, 255, 255, 0.4);' 
-  + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
-  + '  overflow: hidden;'
-  + '  pointer-events: auto;' 
-  + '  transition: transform 0.3s ease;'
-  + '}'
+  + '.card { position: relative; width: 340px; max-width: 90vw; background: '+CLR_BG+'; backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.4); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02); overflow: hidden; pointer-events: auto; transition: transform 0.3s ease; }'
   + '.card:hover { transform: translateY(-5px); }'
-  + '.xbtn {'
-  + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
-  + '  background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none;'
-  + '  display: flex; align-items: center; justify-content: center;'
-  + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
-  + '  opacity: 1!important; transition: opacity 0.2s;'
-  + '}'
-  + '.reviewer-name, .fomo-name { font-weight: 700; font-size: 15px; color: '+ CLR_TEXT +'; line-height: 1.2; }'
-  + '.review-text, .fomo-body { font-size: 13px; line-height: 1.5; color: '+ CLR_TEXT +'; opacity: 0.9; margin: 0; }'
-  + '.product-highlight { font-weight: 500; color: '+ CLR_PRIMARY +'; }'
-  + '.read-more-btn { color: '+ CLR_PRIMARY +'; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; outline: none!important; }'
+  + '.xbtn { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; font-size: 10px; z-index: 10; opacity: 1!important; transition: opacity 0.2s; }'
+  + '.reviewer-name, .fomo-name { font-weight: 700; font-size: 15px; color: '+CLR_TEXT+'; line-height: 1.2; }'
+  + '.review-text, .fomo-body { font-size: 13px; line-height: 1.5; color: '+CLR_TEXT+'; opacity: 0.9; margin: 0; }'
+  + '.product-highlight { font-weight: 500; color: '+CLR_PRIMARY+'; }'
+  + '.read-more-btn { color: '+CLR_PRIMARY+'; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; outline: none!important; }'
   + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
   + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
   + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
@@ -184,10 +129,9 @@
   wrap.className = "wrap";
   root.appendChild(wrap);
 
-  /* ---- helpers ---- */
   function firstLetter(s){ s=(s||"").trim(); return (s[0]||"?").toUpperCase(); }
   function colorFromString(s){ s=s||""; for(var h=0,i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return "hsl("+(h%360)+" 70% 45%)"; }
-  function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]);}); }
+  function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&","<":"<",">":">","\"":""","'":"'"}[c]);}); }
   function firstName(s){ s=String(s||"").trim(); var parts=s.split(/\s+/); return parts[0]||s; }
   function normalizeSpaces(text){ return (text||"").replace(/\s+/g," ").trim(); }
 
@@ -233,7 +177,7 @@
     return Promise.resolve();
   }
 
-  /* Fetchers with Hebrew Support */
+  /* Fetchers */
   var JS_MIRRORS = ["https://cdn.jsdelivr.net","https://fastly.jsdelivr.net","https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror){ try { var a=new URL(u), m=new URL(mirror); a.protocol=m.protocol; a.host=m.host; return a.toString(); } catch(_){ return u; } }
   function fetchTextWithMirrors(u){
@@ -284,23 +228,7 @@
     });
   }
 
-  var itemsSig = "0_0";
-  function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } 
-  
-  function saveState(idxShown, sig, opt){
-    try {
-      var st = { idx: idxShown, shownAt: opt && opt.shownAt ? opt.shownAt : Date.now(), sig: sig };
-      if (opt && opt.manualClose) st.manualClose = true;
-      if (opt && opt.snoozeUntil) st.snoozeUntil = Number(opt.snoozeUntil)||0;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
-    } catch(_) {}
-  }
-  function restoreState(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; } }
-
   function interleave(reviews, purchases){
-    if (TYPE === "reviews") return reviews;
-    if (TYPE === "purchases") return purchases;
-    
     var out=[], i=0, j=0;
     while(i<reviews.length || j<purchases.length){
       if(i<reviews.length){ out.push(reviews[i++]); }
@@ -315,10 +243,7 @@
   var fadeTimeout = null;
   var removeTimeout = null;
   var isPausedForReadMore = false;
-  var currentShowDuration = 0;
-  var currentShowStart = 0;
-  var remainingShowMs = 0;
-
+  
   function clearShowTimers(){
     if(fadeTimeout){ clearTimeout(fadeTimeout); fadeTimeout = null; }
     if(removeTimeout){ clearTimeout(removeTimeout); removeTimeout = null; }
@@ -327,15 +252,11 @@
   function scheduleHide(showFor){
     clearShowTimers();
     if(!currentCard) return;
-    currentShowDuration = showFor;
-    currentShowStart = Date.now();
-
     fadeTimeout = setTimeout(function(){
       if(!currentCard) return;
       currentCard.classList.remove("enter");
       currentCard.classList.add("leave");
     }, showFor);
-
     removeTimeout = setTimeout(function(){
       if(currentCard && currentCard.parentNode){ currentCard.parentNode.removeChild(currentCard); }
       currentCard = null;
@@ -347,123 +268,64 @@
     isPausedForReadMore = true;
     if(loop) clearInterval(loop);
     if(preTimer) clearTimeout(preTimer);
-    var elapsed = Date.now() - currentShowStart;
-    remainingShowMs = Math.max(0, currentShowDuration - elapsed);
     clearShowTimers();
   }
 
   function resumeFromReadMore(){
     if(!isPausedForReadMore || !currentCard) return;
     isPausedForReadMore = false;
-    var showMs = Math.max(2000, remainingShowMs); 
-    scheduleHide(showMs);
-    preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
+    scheduleHide(SHOW_MS); // Simple logic: restart full timer if expanded
+    preTimer = setTimeout(function(){ startFrom(0); }, SHOW_MS + GAP_MS);
   }
 
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
-
     var x = document.createElement("button"); x.className="xbtn"; x.textContent="×";
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
-
     var header = document.createElement("div"); header.className = "review-header";
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
-    
-    var name = document.createElement("span"); name.className = "reviewer-name"; 
-    name.textContent = item.authorName;
+    var name = document.createElement("span"); name.className = "reviewer-name"; name.textContent = item.authorName;
     profile.appendChild(name);
-    
     header.appendChild(profile);
-    
     var badge = document.createElement("div"); badge.className="compact-badge";
     badge.innerHTML = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID';
-    
-    var body = document.createElement("div"); 
-    body.className = "review-text";
-    body.textContent = item.text; 
-    
-    var readMoreBtn = document.createElement("button");
-    readMoreBtn.className = "read-more-btn";
-    readMoreBtn.textContent = "קרא עוד...";
-    readMoreBtn.style.display = "none"; 
-
-    setTimeout(function(){
-      if (body.scrollHeight > body.clientHeight + 2) {
-        readMoreBtn.style.display = "block";
-      }
-    }, 0);
-
-    readMoreBtn.onclick = function(e){
-      e.stopPropagation();
-      var isExpanded = body.classList.toggle("expanded");
-      readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
-      if(isExpanded) pauseForReadMore(); else resumeFromReadMore();
-    };
-
+    var body = document.createElement("div"); body.className = "review-text"; body.textContent = item.text; 
+    var readMoreBtn = document.createElement("button"); readMoreBtn.className = "read-more-btn"; readMoreBtn.textContent = "קרא עוד..."; readMoreBtn.style.display = "none"; 
+    setTimeout(function(){ if (body.scrollHeight > body.clientHeight + 2) { readMoreBtn.style.display = "block"; } }, 0);
+    readMoreBtn.onclick = function(e){ e.stopPropagation(); var isExpanded = body.classList.toggle("expanded"); readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד..."; if(isExpanded) pauseForReadMore(); else resumeFromReadMore(); };
     var footer = document.createElement("div"); footer.className = "review-footer";
     var stars = document.createElement("div"); stars.className = "stars-wrapper";
-    
-    stars.innerHTML = '<svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>'
-                    + '<div class="stars">★★★★★</div>';
-    
-    footer.appendChild(stars);
-    footer.appendChild(badge); 
-
-    card.appendChild(x);
-    card.appendChild(header);
-    card.appendChild(body);
-    card.appendChild(readMoreBtn);
-    card.appendChild(footer);
-    
+    stars.innerHTML = '<svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>' + '<div class="stars">★★★★★</div>';
+    footer.appendChild(stars); footer.appendChild(badge); 
+    card.appendChild(x); card.appendChild(header); card.appendChild(body); card.appendChild(readMoreBtn); card.appendChild(footer);
     return card;
   }
 
   function renderPurchaseCard(p, overrideTime){
-    var card = document.createElement("div"); 
-    card.className = "card purchase-card enter";
-
+    var card = document.createElement("div"); card.className = "card purchase-card enter";
     var x = document.createElement("button"); x.className="xbtn"; x.textContent="×";
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
-
     var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
-    var img = document.createElement("img"); img.className = "course-img";
-    img.src = p.image || ""; 
+    var img = document.createElement("img"); img.className = "course-img"; img.src = p.image || ""; 
     img.onerror = function(){ this.style.display='none'; var fb=document.createElement('div'); fb.className='pimg-fallback'; fb.textContent='✓'; imgWrap.appendChild(fb); };
     imgWrap.appendChild(img);
-
     var content = document.createElement("div"); content.className = "p-content";
-    
     var header = document.createElement("div"); header.className = "fomo-header";
-    header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>'
-                     + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
-    
+    header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>' + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
     var body = document.createElement("div"); body.className = "fomo-body";
-    
     var finalAction = getActionText(p.buyer, TXT_ACTION);
     body.innerHTML = escapeHTML(finalAction) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
-
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
-    
-    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
-                     + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
-
-    content.appendChild(header);
-    content.appendChild(body);
-    content.appendChild(footer);
-
+    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>' + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
+    content.appendChild(header); content.appendChild(body); content.appendChild(footer);
     var timer = document.createElement("div"); timer.className = "timer-bar";
     var duration = overrideTime ? overrideTime : SHOW_MS;
-    
     timer.style.animationDuration = (duration/1000) + 's';
-    
-    card.appendChild(imgWrap);
-    card.appendChild(content);
-    card.appendChild(timer);
-
+    card.appendChild(imgWrap); card.appendChild(content); card.appendChild(timer);
     return card;
   }
 
@@ -471,24 +333,14 @@
     if(!items.length || isDismissed) return;
     clearShowTimers();
     isPausedForReadMore = false;
-
     var itm = items[idx % items.length];
-    
-    if (!preserveTimestamp) {
-        saveState(idx % items.length, itemsSig); 
-    }
-    
+    if (!preserveTimestamp) saveState(idx % items.length, itemsSig);
     if (!preserveTimestamp) idx++; 
-
     warmForItem(itm).then(function(){
       if(isDismissed) return;
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
-      
-      wrap.innerHTML=""; 
-      wrap.appendChild(card);
-      currentCard = card;
-      scheduleHide(duration);
+      wrap.innerHTML=""; wrap.appendChild(card); currentCard = card; scheduleHide(duration);
     });
   }
 
@@ -496,26 +348,15 @@
     if(loop) clearInterval(loop);
     if(preTimer) clearTimeout(preTimer);
     if(isDismissed) return;
-
     var cycle = SHOW_MS + GAP_MS;
-    
-    function begin(){
-      if(isDismissed) return;
-      showNext(); 
-      loop = setInterval(showNext, cycle);
-    }
-    
-    if (delay > 0) preTimer = setTimeout(begin, delay);
-    else begin();
+    function begin(){ if(isDismissed) return; showNext(); loop = setInterval(showNext, cycle); }
+    if (delay > 0) preTimer = setTimeout(begin, delay); else begin();
   }
   
   function resumeCard(remainingTime){
       showNext(remainingTime, true); 
       idx++; 
-      preTimer = setTimeout(function(){
-          showNext(); 
-          loop = setInterval(showNext, SHOW_MS + GAP_MS);
-      }, remainingTime + GAP_MS);
+      preTimer = setTimeout(function(){ showNext(); loop = setInterval(showNext, SHOW_MS + GAP_MS); }, remainingTime + GAP_MS);
   }
 
   function handleDismiss(){
@@ -527,53 +368,37 @@
     saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
-  /* ---- init ---- */
+  function restoreState(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; } }
+
   function loadAll(){
+    // Fetch from explicit endpoints (Stable logic)
     var p1 = REVIEWS_EP ? fetchJSON(REVIEWS_EP).then(function(d){ return normalizeArray(d,"review"); }) : Promise.resolve([]);
     var p2 = PURCHASES_EP ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }) : Promise.resolve([]);
 
     Promise.all([p1,p2]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
       rev = rev.filter(function(v){ return normalizeSpaces(v.data.text).length > 0; });
-      
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
-
       if(!items.length) return;
 
       ensureFontInHead().then(function(){
         wrap.classList.add('ready');
         var state = restoreState();
         var now = Date.now();
-        
         var runLogic = function() {
             if (state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
                  setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
               } else if (!state.manualClose) {
                  var elapsed = now - state.shownAt;
-                 if (elapsed < SHOW_MS) {
-                     idx = state.idx; 
-                     var remaining = Math.max(1000, SHOW_MS - elapsed); 
-                     resumeCard(remaining);
-                 } else {
-                     idx = state.idx + 1;
-                     startFrom(0); 
-                 }
-              } else {
-                 startFrom(INIT_MS);
-              }
-            } else {
-              if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
-              else startFrom(0);
-            }
+                 if (elapsed < SHOW_MS) { idx = state.idx; var remaining = Math.max(1000, SHOW_MS - elapsed); resumeCard(remaining); } 
+                 else { idx = state.idx + 1; startFrom(0); }
+              } else { startFrom(INIT_MS); }
+            } else { if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS); else startFrom(0); }
         };
-
-        if (state && !state.manualClose) {
-            setTimeout(runLogic, PAGE_TRANSITION_DELAY);
-        } else {
-            runLogic();
-        }
+        // Page transition delay logic
+        if (state && !state.manualClose) setTimeout(runLogic, 3000); else runLogic();
       });
     });
   }
