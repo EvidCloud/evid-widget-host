@@ -1,4 +1,4 @@
-/*! both-controller v4.5.0 — Desktop Right Fixed + Mobile Full Width */
+/*! both-controller v4.6.0 — Floating Reviews (Restored Spacing) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -69,11 +69,11 @@
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
-  /* Default Desktop Styles - Right Aligned */
+  /* Default Desktop Styles - Right Aligned + Floating (bottom: 20px) */
   + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
   + '  direction:rtl;'
   + '  pointer-events:none;' 
-  + '  display: block;' /* Changed back from flex to block for desktop */
+  + '  display: block;' 
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
@@ -84,7 +84,7 @@
   + '  background: rgba(255, 255, 255, 0.95);' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
-  + '  border-radius: 16px;'
+  + '  border-radius: 16px;' /* Rounded corners for ALL cards */
   + '  border: 1px solid rgba(255, 255, 255, 0.4);' 
   + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
   + '  overflow: hidden;'
@@ -176,11 +176,11 @@
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
   /* =========================================
-      MOBILE OPTIMIZATIONS (FIXED)
+      MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
-  /* Mobile: Full width and centered */
-  + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
+  /* Mobile: Full width and centered, but floating 20px from bottom */
+  + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; bottom: 20px; }'
   
   + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
@@ -510,18 +510,8 @@
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
-      // === כאן השינוי המרכזי: שליטה בגובה (Bottom) ===
-      if(itm.kind === "review") {
-          // ביקורות: נצמד למטה לגמרי (0)
-          wrap.style.bottom = "0px";
-          // ביטול פינות עגולות תחתונות
-          card.style.borderBottomLeftRadius = "0";
-          card.style.borderBottomRightRadius = "0";
-      } else {
-          // רכישות: רווח של 20 פיקסל מלמטה
-          wrap.style.bottom = "20px";
-          card.style.borderRadius = "16px"; 
-      }
+      // Removed the specific "review vs purchase" style override.
+      // Now both will respect the CSS default (Floating bottom: 20px, Rounded corners).
       
       wrap.innerHTML=""; 
       wrap.appendChild(card);
