@@ -1,4 +1,4 @@
-/*! both-controller v4.0.4 — Final Fix for buyerName/productName keys */
+/*! both-controller v4.0.5 — Time Persistence + Compact Mobile Styling */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -39,7 +39,7 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles (Glassmorphism 0.85) ========== */
+  /* ========== styles ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -153,10 +153,26 @@
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
-  /* Mobile sticky adjustments */
+  /* =========================================
+     MOBILE OPTIMIZATIONS (Compact & Bottom)
+     ========================================= */
   + '@media (max-width:480px){'
-  + '  .wrap.sticky-review { right:0; left:0; bottom:0; padding:0; width:100%; display:flex; justify-content:center; }'
-  + '  .card { width: 100%; max-width: 100%; border-radius: 16px 16px 0 0; border-bottom: none; }'
+  /* Force wrap to be bottom centered for ALL cards */
+  + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
+  + '  .card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; }'
+  
+  /* Compact Review Card */
+  + '  .review-card { padding: 12px 14px!important; gap: 4px!important; }'
+  + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
+  + '  .reviewer-name { font-size: 14px!important; }'
+  + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
+  + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
+  
+  /* Compact Purchase Card */
+  + '  .purchase-card { height: 85px!important; }'
+  + '  .course-img-wrapper { width: 75px!important; }'
+  + '  .p-content { padding: 8px 12px!important; }'
+  + '  .fomo-name { font-size: 13px!important; }'
   + '}'
   ;
   root.appendChild(style);
@@ -258,7 +274,6 @@
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
       if(as==="purchase") {
-        /* FIXED: Using buyerName and productName from your JSON */
         return { kind:"purchase", data:{
           buyer: x.buyerName || x.buyer || x.name || "לקוח/ה",
           product: x.productName || x.product || x.title || "מוצר",
@@ -275,7 +290,9 @@
   
   function saveState(idxShown, sig, opt){
     try {
-      var st = { idx: idxShown, shownAt: Date.now(), sig: sig };
+      // We explicitly save 'shownAt' here only for NEW cards or DISMISS
+      // Re-saving a continued card is handled by NOT updating shownAt if simply resuming
+      var st = { idx: idxShown, shownAt: opt && opt.shownAt ? opt.shownAt : Date.now(), sig: sig };
       if (opt && opt.manualClose) st.manualClose = true;
       if (opt && opt.snoozeUntil) st.snoozeUntil = Number(opt.snoozeUntil)||0;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
@@ -407,7 +424,7 @@
     return card;
   }
 
-  function renderPurchaseCard(p){
+  function renderPurchaseCard(p, overrideTime){
     var card = document.createElement("div"); 
     card.className = "card purchase-card enter";
 
@@ -439,7 +456,9 @@
     content.appendChild(footer);
 
     var timer = document.createElement("div"); timer.className = "timer-bar";
-    timer.style.animationDuration = (SHOW_MS/1000) + 's';
+    // Adjust animation duration if this is a "continued" session
+    var duration = overrideTime ? overrideTime : SHOW_MS;
+    timer.style.animationDuration = (duration/1000) + 's';
 
     card.appendChild(imgWrap);
     card.appendChild(content);
@@ -448,28 +467,38 @@
     return card;
   }
 
-  function showNext(){
+  function showNext(overrideDuration, preserveTimestamp){
     if(!items.length || isDismissed) return;
     clearShowTimers();
     isPausedForReadMore = false;
 
     var itm = items[idx % items.length];
     
-    // Save state explicitly every time we show a card
-    saveState(idx % items.length, itemsSig);
+    // Logic: If preserveTimestamp is true, we keep the OLD 'shownAt' so it doesn't reset the 15s counter on reload
+    // If false (normal flow), we save NOW as the start time.
+    if (!preserveTimestamp) {
+        saveState(idx % items.length, itemsSig); 
+    }
     
-    idx++;
-
-    if (itm.kind === "review") wrap.classList.add('sticky-review'); 
-    else wrap.classList.remove('sticky-review');
+    // We increment IDX *after* deciding what to show, but for persistence logic we save the current one.
+    // Actually standard loop expects to advance. 
+    if (!preserveTimestamp) idx++; // Only advance index if this is a fresh show
 
     warmForItem(itm).then(function(){
       if(isDismissed) return;
-      var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data) : renderReviewCard(itm.data);
+      
+      // Determine duration
+      var duration = overrideDuration || SHOW_MS;
+
+      var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
+      
+      // Manual tweak for Review Timer (CSS animation usually not on review, but if added later)
+      // Since Reviews don't have the timer bar in CSS, visual is fine.
+      
       wrap.innerHTML=""; 
       wrap.appendChild(card);
       currentCard = card;
-      scheduleHide(SHOW_MS);
+      scheduleHide(duration);
     });
   }
 
@@ -479,13 +508,28 @@
     if(isDismissed) return;
 
     var cycle = SHOW_MS + GAP_MS;
+    
     function begin(){
       if(isDismissed) return;
-      showNext();
+      showNext(); // Normal start
       loop = setInterval(showNext, cycle);
     }
+    
     if (delay > 0) preTimer = setTimeout(begin, delay);
     else begin();
+  }
+  
+  // Special function to resume a card mid-way
+  function resumeCard(remainingTime){
+      // 1. Show current card immediately (don't advance index, keep old timestamp)
+      showNext(remainingTime, true); 
+      
+      // 2. Schedule the NEXT cycle to happen after 'remainingTime' + GAP
+      idx++; // Now we are done with this card, prepare index for next
+      preTimer = setTimeout(function(){
+          showNext(); // Show next card normally
+          loop = setInterval(showNext, SHOW_MS + GAP_MS);
+      }, remainingTime + GAP_MS);
   }
 
   function handleDismiss(){
@@ -494,6 +538,7 @@
     if(preTimer) clearTimeout(preTimer);
     clearShowTimers();
     var current = (idx - 1 + items.length) % items.length;
+    // For manual close, we update timestamp to NOW so cooldown works
     saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
@@ -518,14 +563,27 @@
 
         if (state && state.sig === itemsSig) {
           if (state.manualClose && state.snoozeUntil > now) {
+             // Snoozed
              setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
           } else if (!state.manualClose) {
-             idx = state.idx + 1;
-             startFrom(0); 
+             // CHECK TIME PERSISTENCE
+             var elapsed = now - state.shownAt;
+             if (elapsed < SHOW_MS) {
+                 // CASE: User moved pages while card was showing. 
+                 // Resume the SAME card for the remaining time.
+                 idx = state.idx; 
+                 var remaining = Math.max(1000, SHOW_MS - elapsed); // Ensure at least 1s
+                 resumeCard(remaining);
+             } else {
+                 // CASE: Time expired while away. Start next card immediately.
+                 idx = state.idx + 1;
+                 startFrom(0); 
+             }
           } else {
              startFrom(INIT_MS);
           }
         } else {
+          // First time
           if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
           else startFrom(0);
         }
