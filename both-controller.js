@@ -1,4 +1,4 @@
-/*! both-controller v4.1.0 — Base64 Config + buyerName Fix */
+/*! both-controller v3.9.9995 — Hebrew URL Fix + Base64 Config */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -8,14 +8,14 @@
   var scriptEl = document.currentScript || scripts[scripts.length - 1];
 
   /* =========================
-     1. פענוח ההגדרות מהדשבורד
+     1. DECODE CONFIGURATION
      ========================= */
   var rawConfig = scriptEl && scriptEl.getAttribute("data-config");
   var CFG = {};
   
-  // אם יש קוד מוצפן - נפענח אותו
   if (rawConfig) {
     try {
+      // פענוח Base64 עם תמיכה מלאה בעברית (UTF-8)
       var json = decodeURIComponent(escape(window.atob(rawConfig)));
       CFG = JSON.parse(json);
     } catch (e) {
@@ -23,26 +23,25 @@
     }
   }
 
-  // חילוץ המשתנים (אם אין בהצפנה, לוקח ברירת מחדל)
-  var SLUG         = CFG.slug || (scriptEl && scriptEl.getAttribute("data-slug"));
+  // חילוץ משתנים
+  var SLUG = CFG.slug || (scriptEl && scriptEl.getAttribute("data-slug"));
   
-  // כתובת ה-API שלך
-  var API_BASE     = "https://review-widget-psi.vercel.app/api"; 
-  var REVIEWS_EP   = SLUG ? (API_BASE + "/data/" + SLUG + ".json") : null;
-  var PURCHASES_EP = SLUG ? (API_BASE + "/purchases?slug=" + SLUG) : null;
+  // כתובת ה-API - שים לב לקידוד ה-SLUG
+  var API_BASE = "https://review-widget-psi.vercel.app/api"; 
+  // FIX: Added encodeURIComponent to handle Hebrew slugs correctly
+  var REVIEWS_EP   = SLUG ? (API_BASE + "/data/" + encodeURIComponent(SLUG) + ".json") : null;
+  var PURCHASES_EP = SLUG ? (API_BASE + "/purchases?slug=" + encodeURIComponent(SLUG)) : null;
 
-  // הגדרות זמן
+  // הגדרות
   var SHOW_MS      = Number(CFG.show || 15000);
   var GAP_MS       = Number(CFG.gap  || 6000);
   var INIT_MS      = Number(CFG.init || 0);
   var TYPE         = CFG.type || "reviews"; 
   
-  // טקסטים
   var TXT_LIVE     = CFG.live   || "מבוקש עכשיו";
   var TXT_ACTION   = CFG.action || "רכש/ה";
   var SMART_GENDER = (CFG.smartGen === 1);
 
-  // צבעים
   var CLR_PRIMARY  = CFG.pColor || "#6366f1";
   var CLR_ACCENT   = CFG.sColor || "#7c3aed";
   var CLR_TEXT     = CFG.tColor || "#0f172a";
@@ -53,13 +52,10 @@
   var DISMISS_COOLDOWN_MS = 45000;
   var STORAGE_KEY = 'evid:widget-state:v4';
 
-  if (!SLUG) {
-    // הגנה למקרה שאין סלאג
-    return;
-  }
+  if (!SLUG) return;
 
   /* =========================
-     מילון שמות נשים (זיהוי מגדרי)
+     Smart Gender Dictionary
      ========================= */
   var FEMALE_NAMES = new Set([
     "אביב","אביגיל","אביה","אבישג","אגם","אדווה","אדל","אודיה","אופיר","אור","אורה","אורלי","אורן","אורית","אושרי","איילת","אילנה","אליאנה","אליה","אלין","אליענה","אלישבע","אמה","אמונה","אמילי","אסתר","אפרת","אריאל","אלה","אלונה","אנאל","אנה","אסנת","אתי",
@@ -85,7 +81,7 @@
   }
 
   /* =========================
-      טעינת פונט Rubik
+      Styles & Fonts
      ========================= */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
   function ensureFontInHead(){
@@ -101,7 +97,6 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== עיצוב (דינמי לפי ההגדרות) ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -115,8 +110,6 @@
   + '  pointer-events:none;' 
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
-
-  /* כרטיס ראשי */
   + '.card {'
   + '  position: relative;'
   + '  width: 340px; max-width: 90vw;'
@@ -131,8 +124,6 @@
   + '  transition: transform 0.3s ease;'
   + '}'
   + '.card:hover { transform: translateY(-5px); }'
-
-  /* כפתור סגירה */
   + '.xbtn {'
   + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
   + '  background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none;'
@@ -140,20 +131,14 @@
   + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
   + '  opacity: 1!important; transition: opacity 0.2s;'
   + '}'
-
-  /* צבעים דינמיים */
   + '.reviewer-name, .fomo-name { font-weight: 700; font-size: 15px; color: '+ CLR_TEXT +'; line-height: 1.2; }'
   + '.review-text, .fomo-body { font-size: 13px; line-height: 1.5; color: '+ CLR_TEXT +'; opacity: 0.9; margin: 0; }'
   + '.product-highlight { font-weight: 500; color: '+ CLR_PRIMARY +'; }'
   + '.read-more-btn { color: '+ CLR_PRIMARY +'; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; outline: none!important; }'
-
-  /* אנימציות */
   + '.enter { animation: slideInRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
   + '.leave { animation: slideOutRight 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
   + '@keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }'
   + '@keyframes slideOutRight { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(50px); } }'
-
-  /* עיצוב ביקורת */
   + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
   + '.review-header { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }'
   + '.user-profile { display: flex; align-items: center; gap: 10px; }'
@@ -161,14 +146,11 @@
   + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
   + '.review-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
   + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
-
   + '.review-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px; }'
   + '.stars-wrapper { display: flex; align-items: center; gap: 8px; }'
   + '.stars { color: #d97706; font-size: 13px; letter-spacing: 1px; font-weight:bold; }'
   + '.google-icon { width: 16px; height: 16px; opacity: 1; display:block; }'
   + '.compact-badge { background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }'
-
-  /* עיצוב רכישה */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
   + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
   + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
@@ -181,11 +163,8 @@
   + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
   + '.pulsing-dot::after { content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6; }'
   + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, '+CLR_PRIMARY+', '+CLR_ACCENT+'); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
-   
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
-   
-  /* עיצוב למובייל */
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; bottom:0!important; width:100%!important; display:flex!important; justify-content:center!important; }'
   + '  .review-card { width: 100%!important; max-width: 100%!important; border-radius: 16px 16px 0 0!important; border-bottom: none!important; padding: 12px 14px!important; gap: 4px!important; }'
@@ -201,12 +180,11 @@
   ;
   root.appendChild(style);
 
-  /* יצירת ה-Wrapper */
   var wrap = document.createElement("div");
   wrap.className = "wrap";
   root.appendChild(wrap);
 
-  /* ---- פונקציות עזר ---- */
+  /* ---- helpers ---- */
   function firstLetter(s){ s=(s||"").trim(); return (s[0]||"?").toUpperCase(); }
   function colorFromString(s){ s=s||""; for(var h=0,i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return "hsl("+(h%360)+" 70% 45%)"; }
   function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]);}); }
@@ -224,7 +202,6 @@
     }catch(_){ return ""; }
   }
 
-  /* תמונות ופרילואד */
   function renderMonogram(name){ var d=document.createElement("div"); d.className="avatar-fallback"; d.textContent=firstLetter(name); d.style.background=colorFromString(name); return d; }
   function renderAvatarPreloaded(name, url){
     var shell = renderMonogram(name);
@@ -256,7 +233,7 @@
     return Promise.resolve();
   }
 
-  /* משיכת נתונים */
+  /* Fetchers with Hebrew Support */
   var JS_MIRRORS = ["https://cdn.jsdelivr.net","https://fastly.jsdelivr.net","https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror){ try { var a=new URL(u), m=new URL(mirror); a.protocol=m.protocol; a.host=m.host; return a.toString(); } catch(_){ return u; } }
   function fetchTextWithMirrors(u){
@@ -281,7 +258,6 @@
   }
   function fetchJSON(url){ return fetchTextWithMirrors(url).then(function(raw){ try{ return JSON.parse(raw); }catch(_){ return { items: [] }; } }); }
 
-  /* נירמול נתונים (כולל התיקון הקריטי) */
   function normalizeArray(data, as){
     var arr=[];
     if(Array.isArray(data)) arr=data;
@@ -298,7 +274,6 @@
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
       if(as==="purchase") {
-        // התיקון הקריטי: תמיכה ב-buyerName וב-productName מה-JSON שלך
         return { kind:"purchase", data:{
           buyer: x.buyerName || x.buyer || x.name || "לקוח/ה",
           product: x.productName || x.product || x.title || "מוצר",
@@ -309,7 +284,6 @@
     });
   }
 
-  /* שמירת מצב (Persistence) */
   var itemsSig = "0_0";
   function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } 
   
@@ -335,7 +309,6 @@
     return out;
   }
 
-  /* ---- לוגיקת רוטציה ---- */
   var items=[], idx=0, loop=null, preTimer=null;
   var isDismissed = false;
   var currentCard = null;
@@ -387,8 +360,6 @@
     preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
   }
 
-  /* ---- RENDERERS ---- */
-   
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
@@ -472,13 +443,11 @@
     
     var body = document.createElement("div"); body.className = "fomo-body";
     
-    // חיבור לוגיקת הטקסט החכמה
     var finalAction = getActionText(p.buyer, TXT_ACTION);
     body.innerHTML = escapeHTML(finalAction) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
 
     var footer = document.createElement("div"); footer.className = "fomo-footer-row";
     
-    // חיבור טקסט הסטטוס
     footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
                      + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
 
