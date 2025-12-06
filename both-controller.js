@@ -1,4 +1,4 @@
-/*! both-controller v5.0.0 — Smart Hebrew Dictionary & Gender Inflection */
+/*! both-controller v5.1.0 — Default Image Support */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -17,11 +17,14 @@
   
   // Custom Text Defaults
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
-  var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה"; // ברירת מחדל
+  var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
   // Design Config
   var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
+  
+  // === NEW: Default Image ===
+  var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/512/190/190411.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
@@ -44,12 +47,12 @@
       "אהב/ה":    { m: "אהב", f: "אהבה" },
       "נהנה/תה":  { m: "נהנה", f: "נהנתה" },
       "ניסה/תה":  { m: "ניסה", f: "ניסתה" },
-      "סגר/ה":    { m: "סגר", f: "סגרה" }, // סגר עסקה/דיל
+      "סגר/ה":    { m: "סגר", f: "סגרה" },
       "למד/ה":    { m: "למד", f: "למדה" },
       "התחיל/ה":  { m: "התחיל", f: "התחילה" },
       "מצא/ה":    { m: "מצא", f: "מצאה" },
-      "תפס/ה":    { m: "תפס", f: "תפסה" }, // תפס מקום
-      "חטף/ה":    { m: "חטף", f: "חטפה" }  // סלנג מכירות
+      "תפס/ה":    { m: "תפס", f: "תפסה" },
+      "חטף/ה":    { m: "חטף", f: "חטפה" }
   };
 
   /* Names Database */
@@ -57,22 +60,11 @@
   var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
   function getGenderedVerb(name, selectedKey) {
-      // 1. נקה את הטקסט הנבחר (למשל "בחר/ה")
       var key = (selectedKey || "רכש/ה").trim();
-
-      // 2. בדוק אם המילה קיימת במילון שלנו. אם לא - החזר אותה כמו שהיא.
-      if (!HEBREW_VERBS[key]) {
-          return key; 
-      }
-
-      // 3. זיהוי מגדר לפי השם
-      if (!name) return HEBREW_VERBS[key].m; // ברירת מחדל זכר
+      if (!HEBREW_VERBS[key]) return key; 
+      if (!name) return HEBREW_VERBS[key].m;
       var first = name.trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
-      
-      // אם זוהתה אישה -> החזר נקבה
       if (DB_FEMALE.indexOf(first) > -1) return HEBREW_VERBS[key].f;
-      
-      // אחרת (גבר או לא ידוע) -> החזר זכר
       return HEBREW_VERBS[key].m;
   }
 
@@ -328,7 +320,7 @@
           demos.push({ kind:"review", data: { authorName: "מיכל כהן", text: "משלוח מהיר ואחלה שירות לקוחות.", rating: 5, profilePhotoUrl: "" } });
       }
       if (PURCHASES_EP) {
-          // משתמשים בפעלים דינמיים גם בדמו
+          // בדמו שולחים תמונה ריקה כדי שהקוד ישתמש בתמונת ברירת המחדל שנבחרה
           demos.push({ kind:"purchase", data: { buyer: "דניאל", product: "חבילת פרימיום", image: "", purchased_at: new Date().toISOString() } });
           demos.push({ kind:"purchase", data: { buyer: "נועה", product: "קורס דיגיטלי", image: "", purchased_at: new Date().toISOString() } });
       }
@@ -460,8 +452,22 @@
 
     var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
     var img = document.createElement("img"); img.className = "course-img";
-    img.src = p.image || ""; 
-    img.onerror = function(){ this.style.display='none'; var fb=document.createElement('div'); fb.className='pimg-fallback'; fb.textContent='✓'; imgWrap.appendChild(fb); };
+    
+    // === לוגיקת תמונה מתוקנת ===
+    // 1. קח מהמוצר. 2. אם אין, קח מה-DEFAULT
+    var imageSource = p.image && p.image.length > 5 ? p.image : DEFAULT_PRODUCT_IMG;
+    
+    img.src = imageSource;
+    
+    // אם התמונה נשברת, שים V
+    img.onerror = function(){ 
+        this.style.display='none'; 
+        var fb=document.createElement('div'); 
+        fb.className='pimg-fallback'; 
+        fb.textContent='✓'; 
+        imgWrap.appendChild(fb); 
+    };
+    
     imgWrap.appendChild(img);
 
     var content = document.createElement("div"); content.className = "p-content";
@@ -472,7 +478,6 @@
     
     var body = document.createElement("div"); body.className = "fomo-body";
     
-    // === USING SMART DICTIONARY HERE ===
     var dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
     
     body.innerHTML = escapeHTML(dynamicVerb) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
