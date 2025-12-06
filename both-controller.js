@@ -1,4 +1,4 @@
-/*! both-controller v5.2.0 — Smart Image Fitting */
+/*! both-controller v5.3.0 — Smart Image Fitting (Contain + Padding) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -24,7 +24,7 @@
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
   
   // Default Image
-  var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/512/190/190411.png";
+  var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
@@ -57,7 +57,7 @@
 
   /* Names Database */
   var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
-  var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,שרה,שרית,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
+  var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
   function getGenderedVerb(name, selectedKey) {
       var key = (selectedKey || "רכש/ה").trim();
@@ -162,12 +162,12 @@
   /* --- Purchase Widget Specifics --- */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
   
-  /* Smart Product Image Fit */
+  /* Smart Product Image Fit (CONTAIN + PADDING) */
   + '.course-img-wrapper {'
-  + '  flex: 0 0 100px; height: 100%; position: relative; overflow: hidden;'
+  + '  flex: 0 0 85px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center;'
   + '}'
   + '.course-img {'
-  + '  width: 100%; height: 100%; object-fit: cover; display: block;'
+  + '  width: 100%; height: 100%; object-fit: contain; padding: 12px; display: block;'
   + '}'
   
   + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
@@ -187,7 +187,7 @@
    
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
-  + '  .card { border-radius: 0; }' /* Reset generic radius for mobile stickiness */
+  + '  .card { border-radius: 0; }'
   + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
   + '  .review-avatar, .avatar-fallback { width: 40px!important; height: 40px!important; font-size: 16px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
