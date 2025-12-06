@@ -1,4 +1,4 @@
-/*! both-controller v5.3.0 — Smart Image Fitting (Contain + Padding) */
+/*! both-controller v5.4.0 — Smart Image Fitting (Hybrid Mode) */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -23,7 +23,7 @@
   var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
   
-  // Default Image
+  // Default Image (Fallback)
   var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
@@ -162,11 +162,18 @@
   /* --- Purchase Widget Specifics --- */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
   
-  /* Smart Product Image Fit (CONTAIN + PADDING) */
+  /* Course Wrapper (Fixed Width) */
   + '.course-img-wrapper {'
-  + '  flex: 0 0 85px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center;'
+  + '  flex: 0 0 100px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center;'
   + '}'
-  + '.course-img {'
+  
+  /* Class for REAL images (Full cover, no padding) */
+  + '.course-img.real-photo {'
+  + '  width: 100%; height: 100%; object-fit: cover; padding: 0; display: block;'
+  + '}'
+
+  /* Class for DEFAULT icons (Contain, with padding) */
+  + '.course-img.default-icon {'
   + '  width: 100%; height: 100%; object-fit: contain; padding: 12px; display: block;'
   + '}'
   
@@ -466,15 +473,20 @@
     card.appendChild(x);
 
     var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
-    var img = document.createElement("img"); img.className = "course-img";
+    var img = document.createElement("img"); 
     
-    // === לוגיקת תמונה מתוקנת ===
-    // 1. קח מהמוצר. 2. אם אין, קח מה-DEFAULT
-    var imageSource = p.image && p.image.length > 5 ? p.image : DEFAULT_PRODUCT_IMG;
+    // === לוגיקת תמונה היברידית ===
+    // 1. האם יש תמונה אמיתית מה-API (ארוכה מ-5 תווים)?
+    var isRealImage = (p.image && p.image.length > 5);
+    
+    // 2. קבע את המקור
+    var imageSource = isRealImage ? p.image : DEFAULT_PRODUCT_IMG;
+    
+    // 3. הוסף קלאס מתאים: אם אמיתי -> "real-photo", אם דיפולט -> "default-icon"
+    img.className = isRealImage ? "course-img real-photo" : "course-img default-icon";
     
     img.src = imageSource;
     
-    // אם התמונה נשברת, שים V
     img.onerror = function(){ 
         this.style.display='none'; 
         var fb=document.createElement('div'); 
