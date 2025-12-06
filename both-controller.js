@@ -1,4 +1,4 @@
-/*! both-controller v5.1.0 — Default Image Support */
+/*! both-controller v5.2.0 — Smart Image Fitting */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -23,7 +23,7 @@
   var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
   
-  // === NEW: Default Image ===
+  // Default Image
   var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/512/190/190411.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
@@ -57,7 +57,7 @@
 
   /* Names Database */
   var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
-  var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
+  var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,שרה,שרית,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
   function getGenderedVerb(name, selectedKey) {
       var key = (selectedKey || "רכש/ה").trim();
@@ -139,8 +139,15 @@
   + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
   + '.review-header { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }'
   + '.user-profile { display: flex; align-items: center; gap: 10px; }'
-  + '.review-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7; }'
-  + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
+  
+  /* Smart Avatar Fit */
+  + '.review-avatar {' 
+  + '  width: 48px; height: 48px; border-radius: 50%;' 
+  + '  border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7;'
+  + '  object-fit: cover; aspect-ratio: 1/1;' 
+  + '}'
+  
+  + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:48px;height:48px;border-radius:50%;border:2px solid #fff; aspect-ratio: 1/1; font-size: 18px; }'
   + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
   + '.review-text { font-size: 13px; line-height: 1.5; color: #374151; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
   + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
@@ -154,14 +161,21 @@
 
   /* --- Purchase Widget Specifics --- */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
-  + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
-  + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
+  
+  /* Smart Product Image Fit */
+  + '.course-img-wrapper {'
+  + '  flex: 0 0 100px; height: 100%; position: relative; overflow: hidden;'
+  + '}'
+  + '.course-img {'
+  + '  width: 100%; height: 100%; object-fit: cover; display: block;'
+  + '}'
+  
   + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
-  + '.p-content { flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: right; height: 100%; }'
+  + '.p-content { flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: right; height: 100%; min-width: 0; }'
   + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
   + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
   + '.fomo-time { font-size: 11px; padding-left: 20px; }'
-  + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
+  + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }'
   + '.product-highlight { font-weight: 500; color: #2563eb; }'
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
@@ -173,13 +187,14 @@
    
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
+  + '  .card { border-radius: 0; }' /* Reset generic radius for mobile stickiness */
   + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
-  + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
+  + '  .review-avatar, .avatar-fallback { width: 40px!important; height: 40px!important; font-size: 16px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
-  + '  .purchase-card { width: 100%!important; margin: 0!important; height: 85px!important; box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important; }'
-  + '  .course-img-wrapper { width: 75px!important; }'
+  + '  .purchase-card { width: 100%!important; margin: 0!important; height: 90px!important; box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important; }'
+  + '  .course-img-wrapper { flex: 0 0 90px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
   + '  .fomo-name { font-size: 13px!important; }'
   + '}'
