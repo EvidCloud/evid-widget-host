@@ -1,4 +1,4 @@
-/*! both-controller v4.9.5 — Fonts, Position, Snake_case & Demo Data */
+/*! both-controller v5.0.0 — Smart Hebrew Dictionary & Gender Inflection */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -17,7 +17,7 @@
   
   // Custom Text Defaults
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
-  var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
+  var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה"; // ברירת מחדל
   
   // Design Config
   var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
@@ -26,25 +26,54 @@
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
 
-  // If no endpoints provided, we assume demo mode or missing config
-  if (!REVIEWS_EP && !PURCHASES_EP) {
-     // We will handle empty endpoints by generating demo data later
-  }
+  /* =========================================================
+      SMART DICTIONARY: 20 E-commerce Verbs (Male/Female)
+     ========================================================= */
+  var HEBREW_VERBS = {
+      "רכש/ה":    { m: "רכש", f: "רכשה" },
+      "קנה/תה":   { m: "קנה", f: "קנתה" },
+      "הזמין/ה":  { m: "הזמין", f: "הזמינה" },
+      "בחר/ה":    { m: "בחר", f: "בחרה" },
+      "הצטרף/ה":  { m: "הצטרף", f: "הצטרפה" },
+      "נרשם/ה":   { m: "נרשם", f: "נרשמה" },
+      "הוסיף/ה":  { m: "הוסיף", f: "הוסיפה" },
+      "התחדש/ה":  { m: "התחדש", f: "התחדשה" },
+      "שריין/ה":  { m: "שריין", f: "שריינה" },
+      "הבטיח/ה":  { m: "הבטיח", f: "הבטיחה" },
+      "קיבל/ה":   { m: "קיבל", f: "קיבלה" },
+      "אהב/ה":    { m: "אהב", f: "אהבה" },
+      "נהנה/תה":  { m: "נהנה", f: "נהנתה" },
+      "ניסה/תה":  { m: "ניסה", f: "ניסתה" },
+      "סגר/ה":    { m: "סגר", f: "סגרה" }, // סגר עסקה/דיל
+      "למד/ה":    { m: "למד", f: "למדה" },
+      "התחיל/ה":  { m: "התחיל", f: "התחילה" },
+      "מצא/ה":    { m: "מצא", f: "מצאה" },
+      "תפס/ה":    { m: "תפס", f: "תפסה" }, // תפס מקום
+      "חטף/ה":    { m: "חטף", f: "חטפה" }  // סלנג מכירות
+  };
 
-  /* =========================
-      DATA: Hebrew Names DB
-     ========================= */
+  /* Names Database */
   var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
   var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
-  function getGenderedVerb(name, defaultText) {
-      if (!name) return defaultText;
+  function getGenderedVerb(name, selectedKey) {
+      // 1. נקה את הטקסט הנבחר (למשל "בחר/ה")
+      var key = (selectedKey || "רכש/ה").trim();
+
+      // 2. בדוק אם המילה קיימת במילון שלנו. אם לא - החזר אותה כמו שהיא.
+      if (!HEBREW_VERBS[key]) {
+          return key; 
+      }
+
+      // 3. זיהוי מגדר לפי השם
+      if (!name) return HEBREW_VERBS[key].m; // ברירת מחדל זכר
       var first = name.trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
       
-      if (DB_MALE.indexOf(first) > -1) return "רכש"; 
-      if (DB_FEMALE.indexOf(first) > -1) return "רכשה"; 
+      // אם זוהתה אישה -> החזר נקבה
+      if (DB_FEMALE.indexOf(first) > -1) return HEBREW_VERBS[key].f;
       
-      return defaultText; 
+      // אחרת (גבר או לא ידוע) -> החזר זכר
+      return HEBREW_VERBS[key].m;
   }
 
   /* =========================
@@ -259,7 +288,6 @@
       }};
       if(as==="purchase") {
         return { kind:"purchase", data:{
-          // === FIX: Added snake_case support for Supabase/SQL DBs ===
           buyer: x.buyerName || x.buyer_name || x.buyer || x.name || x.first_name || "לקוח/ה",
           product: x.productName || x.product_name || x.item_name || x.product || x.title || "מוצר",
           image: x.productImage || x.product_image || x.image || "",
@@ -292,16 +320,15 @@
     return out;
   }
 
-  /* === NEW: Demo Generator === */
+  /* === Demo Generator === */
   function generateDemoItems() {
       var demos = [];
-      // If we are in "Review Mode" (reviews EP exists, or both)
       if (REVIEWS_EP) {
           demos.push({ kind:"review", data: { authorName: "ישראל ישראלי", text: "שירות מצוין, מאוד נהניתי מהמוצר!", rating: 5, profilePhotoUrl: "" } });
           demos.push({ kind:"review", data: { authorName: "מיכל כהן", text: "משלוח מהיר ואחלה שירות לקוחות.", rating: 5, profilePhotoUrl: "" } });
       }
-      // If we are in "Purchase Mode" (purchases EP exists)
       if (PURCHASES_EP) {
+          // משתמשים בפעלים דינמיים גם בדמו
           demos.push({ kind:"purchase", data: { buyer: "דניאל", product: "חבילת פרימיום", image: "", purchased_at: new Date().toISOString() } });
           demos.push({ kind:"purchase", data: { buyer: "נועה", product: "קורס דיגיטלי", image: "", purchased_at: new Date().toISOString() } });
       }
@@ -374,7 +401,6 @@
     var profile = document.createElement("div"); profile.className = "user-profile";
     profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
-    // Clean name logic
     var name = document.createElement("span"); name.className = "reviewer-name"; 
     name.textContent = item.authorName;
     profile.appendChild(name);
@@ -446,7 +472,7 @@
     
     var body = document.createElement("div"); body.className = "fomo-body";
     
-    // === NEW: Gender Detection Logic ===
+    // === USING SMART DICTIONARY HERE ===
     var dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
     
     body.innerHTML = escapeHTML(dynamicVerb) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
@@ -491,20 +517,16 @@
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
-      // === LOGIC: Positioning Check ===
       var isMobile = window.innerWidth <= 480;
 
       if (isMobile) {
-          // *** MOBILE LOGIC ***
           if (itm.kind === "review") {
-             // Stick to floor
              wrap.style.bottom = "0px";
              wrap.style.top = "auto";
              wrap.style.left = "0px";
              wrap.style.right = "0px";
              card.style.borderRadius = "16px 16px 0 0";
           } else {
-             // Purchases Float
              wrap.style.bottom = "20px";
              wrap.style.top = "auto";
              wrap.style.left = "0px";
@@ -512,27 +534,22 @@
              card.style.borderRadius = "16px";
           }
       } else {
-          // *** DESKTOP LOGIC (Dynamic Position) ***
           card.style.borderRadius = "16px";
-          
-          // Reset all positions first
           wrap.style.top = "auto";
           wrap.style.bottom = "auto";
           wrap.style.left = "auto";
           wrap.style.right = "auto";
 
-          // Vertical
           if (WIDGET_POS.includes("top")) {
               wrap.style.top = "60px";
           } else {
-              wrap.style.bottom = "20px"; // Default bottom
+              wrap.style.bottom = "20px"; 
           }
 
-          // Horizontal
           if (WIDGET_POS.includes("left")) {
               wrap.style.left = "20px";
           } else {
-              wrap.style.right = "20px"; // Default right
+              wrap.style.right = "20px"; 
           }
       }
       
@@ -590,10 +607,8 @@
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
 
-      // === FALLBACK: If no items found, generate demos ===
       if(!items.length) {
           items = generateDemoItems();
-          // If still empty, exit
           if(!items.length) return;
       }
 
@@ -603,8 +618,7 @@
         var now = Date.now();
         
         var runLogic = function() {
-            // In demo mode (fallback), we ignore saved state to always show something
-            var isDemo = (items[0] && items[0].data && items[0].data.authorName === "ישראל ישראלי") || (items[0] && items[0].data && items[0].data.buyer === "דניאל");
+            var isDemo = (items[0] && items[0].data && items[0].data.authorName === "ישראל ישראלי");
             
             if (!isDemo && state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
