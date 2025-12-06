@@ -1,4 +1,4 @@
-/*! both-controller v5.4.0 — Smart Image Fitting (Hybrid Mode) */
+/*! both-controller v5.5.0 — Mobile Reviews Sticky Fix */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -552,21 +552,27 @@
       var isMobile = window.innerWidth <= 480;
 
       if (isMobile) {
+          // Reset desktop styles
+          wrap.style.top = "auto";
+          wrap.style.left = "0px";
+          wrap.style.right = "0px";
+
           if (itm.kind === "review") {
+             // STICKY BOTTOM FOR REVIEWS
              wrap.style.bottom = "0px";
-             wrap.style.top = "auto";
-             wrap.style.left = "0px";
-             wrap.style.right = "0px";
              card.style.borderRadius = "16px 16px 0 0";
+             card.style.margin = "0"; // Ensure no margin
           } else {
+             // FLOATING FOR PURCHASES
              wrap.style.bottom = "20px";
-             wrap.style.top = "auto";
-             wrap.style.left = "0px";
-             wrap.style.right = "0px";
              card.style.borderRadius = "16px";
+             card.style.margin = "0"; // Reset margin
           }
       } else {
+          // DESKTOP LOGIC
           card.style.borderRadius = "16px";
+          card.style.margin = "0";
+          
           wrap.style.top = "auto";
           wrap.style.bottom = "auto";
           wrap.style.left = "auto";
