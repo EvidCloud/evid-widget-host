@@ -1,4 +1,4 @@
-/*! both-controller v4.8.0 — FINAL FIX: Mobile Review Stick 0px */
+/*! both-controller v4.9.0 — Fonts & Custom Desktop Positioning */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -19,6 +19,10 @@
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
+  // NEW: Design Config
+  var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
+  var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
+
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
 
@@ -44,14 +48,15 @@
   }
 
   /* =========================
-      Font: Rubik
+      Font Loading (Dynamic)
      ========================= */
-  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap';
+  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=Assistant:wght@300;400;600;700&family=Fredoka:wght@300;400;500;600;700&display=swap';
+  
   function ensureFontInHead(){
     try{
-      if (!document.getElementById('evid-rubik-font')) {
+      if (!document.getElementById('evid-google-fonts')) {
         var link = document.createElement('link');
-        link.id = 'evid-rubik-font';
+        link.id = 'evid-google-fonts';
         link.rel = 'stylesheet';
         link.href = FONT_HREF;
         document.head.appendChild(link);
@@ -61,20 +66,21 @@
   }
 
   /* ========== styles ========== */
+  // We use the WIDGET_FONT variable here
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
   + ':host, :host *, .wrap, .wrap * {'
-  + '  font-family:"Rubik",ui-sans-serif,system-ui,-apple-system,sans-serif!important;'
+  + '  font-family: "' + WIDGET_FONT + '", "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif !important;'
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
-  /* Default Desktop Styles - Right Aligned + Floating */
-  + '  position:fixed; bottom:20px; right:20px; z-index:2147483000;'
+  /* Default Desktop Styles - will be overridden by JS based on position */
+  + '  position:fixed; z-index:2147483000;'
   + '  direction:rtl;'
   + '  pointer-events:none;' 
   + '  display: block;'
-  + '  transition: bottom 0.3s ease;' /* Smooth transition if position changes */
+  + '  transition: bottom 0.3s ease, top 0.3s ease, right 0.3s ease, left 0.3s ease;' 
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
@@ -85,7 +91,7 @@
   + '  background: rgba(255, 255, 255, 0.95);' 
   + '  backdrop-filter: blur(20px) saturate(180%);'
   + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
-  + '  border-radius: 16px;' /* Default rounded corners */
+  + '  border-radius: 16px;' 
   + '  border: 1px solid rgba(255, 255, 255, 0.4);' 
   + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
   + '  overflow: hidden;'
@@ -180,9 +186,7 @@
       MOBILE OPTIMIZATIONS
      ========================================= */
   + '@media (max-width:480px){'
-  /* Mobile: Full width and centered. 
-     IMPORTANT: We do NOT set 'bottom' here. We let JS control it dynamically.
-  */
+  /* Mobile: Full width and centered. */
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
   
   + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
@@ -513,17 +517,49 @@
       var duration = overrideDuration || SHOW_MS;
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
-      // === LOGIC: STICKY BOTTOM FOR MOBILE REVIEWS ONLY ===
+      // === LOGIC: Positioning Check ===
       var isMobile = window.innerWidth <= 480;
 
-      if (isMobile && itm.kind === "review") {
-          // *** MOBILE + REVIEW = STICK TO FLOOR ***
-          wrap.style.bottom = "0px";
-          card.style.borderRadius = "16px 16px 0 0"; // Square bottom corners
+      if (isMobile) {
+          // *** MOBILE LOGIC (Unchanged) ***
+          if (itm.kind === "review") {
+             // Stick to floor
+             wrap.style.bottom = "0px";
+             wrap.style.top = "auto";
+             wrap.style.left = "0px";
+             wrap.style.right = "0px";
+             card.style.borderRadius = "16px 16px 0 0";
+          } else {
+             // Purchases Float
+             wrap.style.bottom = "20px";
+             wrap.style.top = "auto";
+             wrap.style.left = "0px";
+             wrap.style.right = "0px";
+             card.style.borderRadius = "16px";
+          }
       } else {
-          // *** EVERYTHING ELSE (Desktop OR Mobile Purchases) = FLOAT ***
-          wrap.style.bottom = "20px";
-          card.style.borderRadius = "16px"; // Regular corners
+          // *** DESKTOP LOGIC (Dynamic Position) ***
+          card.style.borderRadius = "16px";
+          
+          // Reset all positions first
+          wrap.style.top = "auto";
+          wrap.style.bottom = "auto";
+          wrap.style.left = "auto";
+          wrap.style.right = "auto";
+
+          // Vertical
+          if (WIDGET_POS.includes("top")) {
+              wrap.style.top = "60px";
+          } else {
+              wrap.style.bottom = "20px"; // Default bottom
+          }
+
+          // Horizontal
+          if (WIDGET_POS.includes("left")) {
+              wrap.style.left = "20px";
+          } else {
+              wrap.style.right = "20px"; // Default right
+          }
       }
       
       wrap.innerHTML=""; 
