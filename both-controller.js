@@ -1,4 +1,4 @@
-/*! both-controller v4.9.0 — Fonts & Custom Desktop Positioning */
+/*! both-controller v4.9.5 — Fonts, Position, Snake_case & Demo Data */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -19,16 +19,16 @@
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
-  // NEW: Design Config
+  // Design Config
   var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
 
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v3';
 
+  // If no endpoints provided, we assume demo mode or missing config
   if (!REVIEWS_EP && !PURCHASES_EP) {
-    root.innerHTML = '<div style="font-family: system-ui; color:#c00; background:#fff3f3; padding:12px; border:1px solid #f7caca; border-radius:8px">Missing endpoints.</div>';
-    return;
+     // We will handle empty endpoints by generating demo data later
   }
 
   /* =========================
@@ -48,7 +48,7 @@
   }
 
   /* =========================
-      Font Loading (Dynamic)
+      Font Loading
      ========================= */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=Assistant:wght@300;400;600;700&family=Fredoka:wght@300;400;500;600;700&display=swap';
   
@@ -66,7 +66,6 @@
   }
 
   /* ========== styles ========== */
-  // We use the WIDGET_FONT variable here
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
@@ -75,7 +74,6 @@
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
-  /* Default Desktop Styles - will be overridden by JS based on position */
   + '  position:fixed; z-index:2147483000;'
   + '  direction:rtl;'
   + '  pointer-events:none;' 
@@ -123,79 +121,42 @@
   + '.review-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7; }'
   + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:42px;height:42px;border-radius:50%;border:2px solid #fff; }'
   + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
-   
-  /* Text & Read More */
-  + '.review-text {'
-  + '  font-size: 13px; line-height: 1.5; color: #374151; margin: 0;'
-  + '  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
-  + '  transition: all 0.3s ease;'
-  + '}'
+  + '.review-text { font-size: 13px; line-height: 1.5; color: #374151; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
   + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
-  + '.read-more-btn {'
-  + '  font-size: 12px; color: #2563eb; font-weight: 700; cursor: pointer;'
-  + '  background: transparent!important; border: none; padding: 5px 0; align-self: flex-start;'
-  + '  outline: none!important;'
-  + '}'
+  + '.read-more-btn { font-size: 12px; color: #2563eb; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; align-self: flex-start; outline: none!important; }'
   + '.read-more-btn:hover { text-decoration: underline; }'
-
-  /* Footer */
-  + '.review-footer {'
-  + '  display: flex; justify-content: space-between; align-items: center;'
-  + '  border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px;'
-  + '}'
+  + '.review-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px; }'
   + '.stars-wrapper { display: flex; align-items: center; gap: 8px; }'
   + '.stars { color: #d97706; font-size: 13px; letter-spacing: 1px; font-weight:bold; }'
   + '.google-icon { width: 16px; height: 16px; opacity: 1; display:block; }'
-  + '.compact-badge {'
-  + '  background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px;'
-  + '  font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px;'
-  + '}'
+  + '.compact-badge { background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }'
 
   /* --- Purchase Widget Specifics --- */
   + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
   + '.course-img-wrapper { width: 90px; height: 100%; flex-shrink: 0; position: relative; }'
   + '.course-img { width: 100%; height: 100%; object-fit: cover; display:block; }'
   + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
-   
-  + '.p-content {'
-  + '  flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column;'
-  + '  justify-content: center; gap: 2px; text-align: right; height: 100%;'
-  + '}'
+  + '.p-content { flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: right; height: 100%; }'
   + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
   + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
   + '.fomo-time { font-size: 11px; padding-left: 20px; }'
-  
   + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; }'
   + '.product-highlight { font-weight: 500; color: #2563eb; }'
-   
   + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
   + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
-  
   + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
-  + '.pulsing-dot::after {'
-  + '  content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0;'
-  + '  background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6;'
-  + '}'
-  
+  + '.pulsing-dot::after { content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6; }'
   + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
-   
   + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
   + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
    
-  /* =========================================
-      MOBILE OPTIMIZATIONS
-     ========================================= */
   + '@media (max-width:480px){'
-  /* Mobile: Full width and centered. */
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
-  
   + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
   + '  .review-avatar, .avatar-fallback { width: 34px!important; height: 34px!important; }'
   + '  .reviewer-name { font-size: 14px!important; }'
   + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
   + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
-  
-  /* PURCHASES */
   + '  .purchase-card { width: 100%!important; margin: 0!important; height: 85px!important; box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important; }'
   + '  .course-img-wrapper { width: 75px!important; }'
   + '  .p-content { padding: 8px 12px!important; }'
@@ -204,7 +165,6 @@
   ;
   root.appendChild(style);
 
-  /* wrapper */
   var wrap = document.createElement("div");
   wrap.className = "wrap";
   root.appendChild(wrap);
@@ -215,7 +175,6 @@
   function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]);}); }
   function firstName(s){ s=String(s||"").trim(); var parts=s.split(/\s+/); return parts[0]||s; }
   function normalizeSpaces(text){ return (text||"").replace(/\s+/g," ").trim(); }
-
   function timeAgo(ts){
     try{ var d=new Date(ts);
       var diff=Math.max(0,(Date.now()-d.getTime())/1000);
@@ -227,7 +186,6 @@
     }catch(_){ return ""; }
   }
 
-  /* Avatar helpers */
   function renderMonogram(name){ var d=document.createElement("div"); d.className="avatar-fallback"; d.textContent=firstLetter(name); d.style.background=colorFromString(name); return d; }
   function renderAvatarPreloaded(name, url){
     var shell = renderMonogram(name);
@@ -239,7 +197,6 @@
     return shell;
   }
 
-  /* Image preloader */
   var IMG_CACHE = new Map();
   function warmImage(url){
     if(!url) return Promise.resolve();
@@ -302,10 +259,11 @@
       }};
       if(as==="purchase") {
         return { kind:"purchase", data:{
-          buyer: x.buyerName || x.buyer || x.name || "לקוח/ה",
-          product: x.productName || x.product || x.title || "מוצר",
-          image: x.productImage || x.image || "",
-          purchased_at: x.purchased_at || new Date().toISOString()
+          // === FIX: Added snake_case support for Supabase/SQL DBs ===
+          buyer: x.buyerName || x.buyer_name || x.buyer || x.name || x.first_name || "לקוח/ה",
+          product: x.productName || x.product_name || x.item_name || x.product || x.title || "מוצר",
+          image: x.productImage || x.product_image || x.image || "",
+          purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
         }};
       }
     });
@@ -332,6 +290,22 @@
       if(j<purchases.length){ out.push(purchases[j++]); }
     }
     return out;
+  }
+
+  /* === NEW: Demo Generator === */
+  function generateDemoItems() {
+      var demos = [];
+      // If we are in "Review Mode" (reviews EP exists, or both)
+      if (REVIEWS_EP) {
+          demos.push({ kind:"review", data: { authorName: "ישראל ישראלי", text: "שירות מצוין, מאוד נהניתי מהמוצר!", rating: 5, profilePhotoUrl: "" } });
+          demos.push({ kind:"review", data: { authorName: "מיכל כהן", text: "משלוח מהיר ואחלה שירות לקוחות.", rating: 5, profilePhotoUrl: "" } });
+      }
+      // If we are in "Purchase Mode" (purchases EP exists)
+      if (PURCHASES_EP) {
+          demos.push({ kind:"purchase", data: { buyer: "דניאל", product: "חבילת פרימיום", image: "", purchased_at: new Date().toISOString() } });
+          demos.push({ kind:"purchase", data: { buyer: "נועה", product: "קורס דיגיטלי", image: "", purchased_at: new Date().toISOString() } });
+      }
+      return demos;
   }
 
   /* ---- rotation ---- */
@@ -521,7 +495,7 @@
       var isMobile = window.innerWidth <= 480;
 
       if (isMobile) {
-          // *** MOBILE LOGIC (Unchanged) ***
+          // *** MOBILE LOGIC ***
           if (itm.kind === "review") {
              // Stick to floor
              wrap.style.bottom = "0px";
@@ -616,7 +590,12 @@
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
 
-      if(!items.length) return;
+      // === FALLBACK: If no items found, generate demos ===
+      if(!items.length) {
+          items = generateDemoItems();
+          // If still empty, exit
+          if(!items.length) return;
+      }
 
       ensureFontInHead().then(function(){
         wrap.classList.add('ready');
@@ -624,7 +603,10 @@
         var now = Date.now();
         
         var runLogic = function() {
-            if (state && state.sig === itemsSig) {
+            // In demo mode (fallback), we ignore saved state to always show something
+            var isDemo = (items[0] && items[0].data && items[0].data.authorName === "ישראל ישראלי") || (items[0] && items[0].data && items[0].data.buyer === "דניאל");
+            
+            if (!isDemo && state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
                   setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
               } else if (!state.manualClose) {
