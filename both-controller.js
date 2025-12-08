@@ -1,4 +1,4 @@
-/*! both-controller v4.1.6 — Compact Glass Design + Auto Highlight */
+/*! both-controller v4.1.7 — Glass Design + Auto Highlight + Read More */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -15,16 +15,14 @@
   var INIT_MS       = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
-  // Custom Text Defaults
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
-  // Design Config
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
   var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
-  var STORAGE_KEY = 'evid:widget-state:v4'; // שיניתי ל-v4 כדי לאפס עיצובים ישנים אצל משתמשים
+  var STORAGE_KEY = 'evid:widget-state:v4';
 
   /* =========================================================
       1. SMART DICTIONARY & HIGHLIGHTER
@@ -39,7 +37,6 @@
   function applySmartHighlight(text) {
       if (!text) return "";
       var newText = text;
-      // חיפוש מילים והחלפה (Regex)
       var pattern = new RegExp("(" + POWER_WORDS.join("|") + ")", "gi");
       newText = newText.replace(pattern, '<span class="smart-mark">$1</span>');
       return newText;
@@ -66,7 +63,6 @@
   /* =========================
       2. STYLES & FONTS
      ========================= */
-  // הוספתי את Assistant לפונטים
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Rubik:wght@300;400;500;700&display=swap';
   
   function ensureFontInHead(){
@@ -98,16 +94,16 @@
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
-  /* === NEW CARD DESIGN (Compact Glass) === */
+  /* Card Design */
   + '.card {'
   + '  position: relative;'
-  + '  width: 290px; max-width: 90vw;' /* רוחב מוקטן */
+  + '  width: 290px; max-width: 90vw;' 
   + '  background: rgba(255, 255, 255, 0.95);' 
   + '  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);'
   + '  border-radius: 18px;' 
   + '  border: 1px solid rgba(255, 255, 255, 0.8);' 
   + '  box-shadow: 0 8px 25px -8px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.04);'
-  + '  padding: 16px;' /* פחות ריווח פנימי */
+  + '  padding: 16px;'
   + '  overflow: hidden;'
   + '  pointer-events: auto;' 
   + '  transition: transform 0.3s ease;'
@@ -130,7 +126,7 @@
   + '}'
   + '.card:hover .xbtn { opacity: 1; }'
 
-  /* === Top Badge (פידבק מהשטח) === */
+  /* Headers */
   + '.top-badge-container { display: flex; justify-content: flex-start; margin-bottom: 10px; }'
   + '.modern-badge {'
   + '  font-size: 10px; font-weight: 700; color: #4f46e5; background: #eef2ff;'
@@ -143,7 +139,6 @@
   + '}'
   + '@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(79, 70, 229, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }'
 
-  /* === Review Content === */
   + '.review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }'
   + '.user-pill { display: flex; align-items: center; gap: 8px; }'
   
@@ -155,23 +150,25 @@
   + '  object-fit: cover;'
   + '}'
   + '.avatar-fallback { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; display:grid; place-items:center; font-weight:700; font-size:12px; }'
-
   + '.reviewer-name { font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px; }'
   
-  /* Rating + Google Logo */
   + '.rating-container { display: flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #f1f5f9; padding: 3px 6px; border-radius: 6px; }'
   + '.stars { color: #f59e0b; font-size: 11px; letter-spacing: 1px; }'
   + '.g-icon-svg { width: 12px; height: 12px; display: block; }'
 
-  + '.review-text { font-size: 13px; line-height: 1.4; color: #334155; font-weight: 400; margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }'
+  /* === Text & Read More === */
+  + '.review-text { font-size: 13px; line-height: 1.4; color: #334155; font-weight: 400; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
+  + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
   
-  /* === Smart Marker Style === */
+  + '.read-more-btn { font-size: 11px; color: #4f46e5; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 2px 0 0 0; outline: none!important; margin-top: 2px; }'
+  + '.read-more-btn:hover { text-decoration: underline; }'
+
   + '.smart-mark {'
   + '  background: linear-gradient(to bottom, transparent 65%, #fef08a 65%);'
   + '  color: #0f172a; font-weight: 700; padding: 0 1px;'
   + '}'
 
-  /* --- Purchase Widget Specifics (התאמה לקומפקטיות) --- */
+  /* --- Purchase Widget --- */
   + '.purchase-card { height: 85px; padding: 0; display: flex; flex-direction: row; gap: 0; width: 290px; }'
   + '.course-img-wrapper { flex: 0 0 85px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center; }'
   + '.course-img { width: 100%; height: 100%; object-fit: cover; }'
@@ -321,6 +318,10 @@
   var currentCard = null;
   var fadeTimeout = null;
   var removeTimeout = null;
+  var isPausedForReadMore = false;
+  var currentShowDuration = 0;
+  var currentShowStart = 0;
+  var remainingShowMs = 0;
 
   function clearShowTimers(){
     if(fadeTimeout){ clearTimeout(fadeTimeout); fadeTimeout = null; }
@@ -330,6 +331,9 @@
   function scheduleHide(showFor){
     clearShowTimers();
     if(!currentCard) return;
+    currentShowDuration = showFor;
+    currentShowStart = Date.now();
+
     fadeTimeout = setTimeout(function(){
       if(!currentCard) return;
       currentCard.classList.remove("enter");
@@ -341,9 +345,25 @@
     }, showFor + 700); 
   }
 
+  function pauseForReadMore(){
+    if(isPausedForReadMore || !currentCard) return;
+    isPausedForReadMore = true;
+    if(loop) clearInterval(loop);
+    if(preTimer) clearTimeout(preTimer);
+    var elapsed = Date.now() - currentShowStart;
+    remainingShowMs = Math.max(0, currentShowDuration - elapsed);
+    clearShowTimers();
+  }
+
+  function resumeFromReadMore(){
+    if(!isPausedForReadMore || !currentCard) return;
+    isPausedForReadMore = false;
+    var showMs = Math.max(2000, remainingShowMs); 
+    scheduleHide(showMs);
+    preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
+  }
+
   /* ---- RENDERERS ---- */
-  
-  // === פונקציית הרינדור המעודכנת לביקורות ===
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
@@ -352,20 +372,18 @@
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
-    // 1. Badge Header (מודרני וקומפקטי)
+    // 1. Badge
     var topBadge = document.createElement("div");
     topBadge.className = "top-badge-container";
     topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
     card.appendChild(topBadge);
 
-    // 2. User & Rating Header (עם לוגו גוגל מובנה)
+    // 2. Header
     var header = document.createElement("div"); header.className = "review-header";
-    
     var userPill = document.createElement("div"); userPill.className = "user-pill";
     userPill.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     var name = document.createElement("span"); name.className = "reviewer-name"; name.textContent = item.authorName;
     userPill.appendChild(name);
-    
     header.appendChild(userPill);
 
     var ratingDiv = document.createElement("div"); ratingDiv.className = "rating-container";
@@ -381,19 +399,36 @@
     header.appendChild(ratingDiv);
     card.appendChild(header);
 
-    // 3. Body with Smart Highlights
+    // 3. Body with Read More
     var body = document.createElement("div"); 
     body.className = "review-text";
-    // יישום המרקר החכם על הטקסט
     body.innerHTML = applySmartHighlight(escapeHTML(item.text)); 
-    card.appendChild(body);
+    
+    var readMoreBtn = document.createElement("button");
+    readMoreBtn.className = "read-more-btn";
+    readMoreBtn.textContent = "קרא עוד...";
+    readMoreBtn.style.display = "none"; 
 
-    // הפוטר הוסר לחלוטין לקבלת מראה קומפקטי
+    // Check overflow
+    setTimeout(function(){
+      if (body.scrollHeight > body.clientHeight + 1) {
+        readMoreBtn.style.display = "block";
+      }
+    }, 0);
+
+    readMoreBtn.onclick = function(e){
+      e.stopPropagation();
+      var isExpanded = body.classList.toggle("expanded");
+      readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
+      if(isExpanded) pauseForReadMore(); else resumeFromReadMore();
+    };
+
+    card.appendChild(body);
+    card.appendChild(readMoreBtn);
 
     return card;
   }
 
-  // === פונקציית הרינדור לרכישות (מותאמת לעיצוב הקומפקטי) ===
   function renderPurchaseCard(p, overrideTime){
     var card = document.createElement("div"); 
     card.className = "card purchase-card enter";
@@ -433,6 +468,7 @@
   function showNext(overrideDuration, preserveTimestamp){
     if(!items.length || isDismissed) return;
     clearShowTimers();
+    isPausedForReadMore = false;
 
     var itm = items[idx % items.length];
     if (!preserveTimestamp) saveState(idx % items.length, itemsSig); 
@@ -445,10 +481,8 @@
       
       var isMobile = window.innerWidth <= 480;
       if (isMobile) {
-          // מובייל: תמיד למטה, מודבק
           wrap.style.top = "auto"; wrap.style.left = "0px"; wrap.style.right = "0px"; wrap.style.bottom = "10px";
       } else {
-          // דסקטופ: לפי הגדרה
           wrap.style.top = "auto"; wrap.style.bottom = "auto"; wrap.style.left = "auto"; wrap.style.right = "auto";
           if (WIDGET_POS.includes("top")) wrap.style.top = "60px"; else wrap.style.bottom = "20px";
           if (WIDGET_POS.includes("left")) wrap.style.left = "20px"; else wrap.style.right = "20px"; 
