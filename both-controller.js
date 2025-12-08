@@ -1,4 +1,4 @@
-/*! both-controller v5.5.0 — Mobile Reviews Sticky Fix */
+/*! both-controller v4.1.6 — Compact Glass Design + Auto Highlight */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -9,10 +9,10 @@
 
   /* ---- config ---- */
   var REVIEWS_EP    = scriptEl && scriptEl.getAttribute("data-reviews-endpoint");
-  var PURCHASES_EP = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
-  var SHOW_MS     = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))         || 15000);
-  var GAP_MS      = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))          || 6000);
-  var INIT_MS     = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
+  var PURCHASES_EP  = scriptEl && scriptEl.getAttribute("data-purchases-endpoint");
+  var SHOW_MS       = Number((scriptEl && scriptEl.getAttribute("data-show-ms"))         || 15000);
+  var GAP_MS        = Number((scriptEl && scriptEl.getAttribute("data-gap-ms"))          || 6000);
+  var INIT_MS       = Number((scriptEl && scriptEl.getAttribute("data-init-delay-ms")) || 0);
   var DISMISS_COOLDOWN_MS = Number((scriptEl && scriptEl.getAttribute("data-dismiss-cooldown-ms")) || 45000);
   
   // Custom Text Defaults
@@ -20,58 +20,54 @@
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
   // Design Config
-  var WIDGET_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
-  
-  // Default Image (Fallback)
   var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
   var PAGE_TRANSITION_DELAY = 3000;
-  var STORAGE_KEY = 'evid:widget-state:v3';
+  var STORAGE_KEY = 'evid:widget-state:v4'; // שיניתי ל-v4 כדי לאפס עיצובים ישנים אצל משתמשים
 
   /* =========================================================
-      SMART DICTIONARY: 20 E-commerce Verbs (Male/Female)
+      1. SMART DICTIONARY & HIGHLIGHTER
      ========================================================= */
-  var HEBREW_VERBS = {
-      "רכש/ה":    { m: "רכש", f: "רכשה" },
-      "קנה/תה":   { m: "קנה", f: "קנתה" },
-      "הזמין/ה":  { m: "הזמין", f: "הזמינה" },
-      "בחר/ה":    { m: "בחר", f: "בחרה" },
-      "הצטרף/ה":  { m: "הצטרף", f: "הצטרפה" },
-      "נרשם/ה":   { m: "נרשם", f: "נרשמה" },
-      "הוסיף/ה":  { m: "הוסיף", f: "הוסיפה" },
-      "התחדש/ה":  { m: "התחדש", f: "התחדשה" },
-      "שריין/ה":  { m: "שריין", f: "שריינה" },
-      "הבטיח/ה":  { m: "הבטיח", f: "הבטיחה" },
-      "קיבל/ה":   { m: "קיבל", f: "קיבלה" },
-      "אהב/ה":    { m: "אהב", f: "אהבה" },
-      "נהנה/תה":  { m: "נהנה", f: "נהנתה" },
-      "ניסה/תה":  { m: "ניסה", f: "ניסתה" },
-      "סגר/ה":    { m: "סגר", f: "סגרה" },
-      "למד/ה":    { m: "למד", f: "למדה" },
-      "התחיל/ה":  { m: "התחיל", f: "התחילה" },
-      "מצא/ה":    { m: "מצא", f: "מצאה" },
-      "תפס/ה":    { m: "תפס", f: "תפסה" },
-      "חטף/ה":    { m: "חטף", f: "חטפה" }
-  };
+  var POWER_WORDS = [
+      "מעולה", "מדהים", "איכות", "איכותי", "שירות", "נדיר", "טירוף",
+      "ממליץ", "מומלץ", "תודה", "אליפות", "מהיר", "בזמן", "הגיע",
+      "חוויה", "כיף", "נהדר", "מקצועי", "יחס", "מושלם", "אהבתי",
+      "פצצה", "וואו", "מרוצה", "הכי טוב", "שווה", "בטוח", "מטורף"
+  ];
 
-  /* Names Database */
-  var DB_MALE = "יוסי,אברהם,אבי,דוד,משה,חיים,יצחק,יעקב,שלמה,ישראל,אהרון,נועם,איתי,אורי,דניאל,עידו,יונתן,גיא,עומר,רועי,אריאל,אדם,נהוראי,עילי,אור,מאור,אופיר,אייל,אלי,אלירן,אלון,אמיר,אסף,ארז,אריה,בן,בר,ברק,גבריאל,גולן,גלעד,דור,דורון,דן,הראל,זיו,חן,יהודה,יואב,יובל,יותם,יניב,ירדן,ירון,ליאור,לירון,מתן,ניר,ניצן,סהר,עדי,עוז,עופר,עידן,עמית,ערן,צחי,קובי,רוני,רן,שי,שלומי,שמעון,שרון,תומר,תמיר,אסלן,מוחמד,אחמד,מחמוד,עלי,איברהים,חוסיין,חסן,עבדאללה,מוסטפא,עומר,אמיר,יוסף,סלאח,סולימאן";
+  function applySmartHighlight(text) {
+      if (!text) return "";
+      var newText = text;
+      // חיפוש מילים והחלפה (Regex)
+      var pattern = new RegExp("(" + POWER_WORDS.join("|") + ")", "gi");
+      newText = newText.replace(pattern, '<span class="smart-mark">$1</span>');
+      return newText;
+  }
+
+  var HEBREW_VERBS = {
+      "רכש/ה": { m: "רכש", f: "רכשה" }, "קנה/תה": { m: "קנה", f: "קנתה" }, "הזמין/ה": { m: "הזמין", f: "הזמינה" },
+      "בחר/ה": { m: "בחר", f: "בחרה" }, "הצטרף/ה": { m: "הצטרף", f: "הצטרפה" }, "נרשם/ה": { m: "נרשם", f: "נרשמה" },
+      "הוסיף/ה": { m: "הוסיף", f: "הוסיפה" }, "התחדש/ה": { m: "התחדש", f: "התחדשה" }, "שריין/ה": { m: "שריין", f: "שריינה" },
+      "הבטיח/ה": { m: "הבטיח", f: "הבטיחה" }, "קיבל/ה": { m: "קיבל", f: "קיבלה" }, "אהב/ה": { m: "אהב", f: "אהבה" },
+      "נהנה/תה": { m: "נהנה", f: "נהנתה" }, "ניסה/תה": { m: "ניסה", f: "ניסתה" }, "סגר/ה": { m: "סגר", f: "סגרה" },
+      "למד/ה": { m: "למד", f: "למדה" }, "התחיל/ה": { m: "התחיל", f: "התחילה" }, "מצא/ה": { m: "מצא", f: "מצאה" },
+      "תפס/ה": { m: "תפס", f: "תפסה" }, "חטף/ה": { m: "חטף", f: "חטפה" }
+  };
   var DB_FEMALE = "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
 
   function getGenderedVerb(name, selectedKey) {
       var key = (selectedKey || "רכש/ה").trim();
       if (!HEBREW_VERBS[key]) return key; 
-      if (!name) return HEBREW_VERBS[key].m;
-      var first = name.trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
-      if (DB_FEMALE.indexOf(first) > -1) return HEBREW_VERBS[key].f;
-      return HEBREW_VERBS[key].m;
+      var first = (name||"").trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, ''); 
+      return (DB_FEMALE.indexOf(first) > -1) ? HEBREW_VERBS[key].f : HEBREW_VERBS[key].m;
   }
 
   /* =========================
-      Font Loading
+      2. STYLES & FONTS
      ========================= */
-  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=Assistant:wght@300;400;600;700&family=Fredoka:wght@300;400;500;600;700&display=swap';
+  // הוספתי את Assistant לפונטים
+  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Rubik:wght@300;400;500;700&display=swap';
   
   function ensureFontInHead(){
     try{
@@ -86,12 +82,11 @@
     }catch(_){ return Promise.resolve(); }
   }
 
-  /* ========== styles ========== */
   var style = document.createElement("style");
   style.textContent = ''
   + ':host{all:initial;}'
   + ':host, :host *, .wrap, .wrap * {'
-  + '  font-family: "' + WIDGET_FONT + '", "Rubik", ui-sans-serif, system-ui, -apple-system, sans-serif !important;'
+  + '  font-family: "Assistant", "Rubik", sans-serif !important;'
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
@@ -103,107 +98,95 @@
   + '}'
   + '.wrap.ready{visibility:visible;opacity:1;}'
 
-  /* Shared Card Styles */
+  /* === NEW CARD DESIGN (Compact Glass) === */
   + '.card {'
   + '  position: relative;'
-  + '  width: 340px; max-width: 90vw;'
+  + '  width: 290px; max-width: 90vw;' /* רוחב מוקטן */
   + '  background: rgba(255, 255, 255, 0.95);' 
-  + '  backdrop-filter: blur(20px) saturate(180%);'
-  + '  -webkit-backdrop-filter: blur(20px) saturate(180%);'
-  + '  border-radius: 16px;' 
-  + '  border: 1px solid rgba(255, 255, 255, 0.4);' 
-  + '  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0,0,0,0.02);'
+  + '  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);'
+  + '  border-radius: 18px;' 
+  + '  border: 1px solid rgba(255, 255, 255, 0.8);' 
+  + '  box-shadow: 0 8px 25px -8px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.04);'
+  + '  padding: 16px;' /* פחות ריווח פנימי */
   + '  overflow: hidden;'
   + '  pointer-events: auto;' 
-  + '  transition: transform 0.3s ease, border-radius 0.3s ease;'
+  + '  transition: transform 0.3s ease;'
   + '}'
   + '.card:hover { transform: translateY(-5px); }'
 
   /* Animations */
-  + '.enter { animation: slideInUp 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '.leave { animation: slideOutDown 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }'
-  + '@keyframes slideInUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }'
-  + '@keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(50px); } }'
+  + '.enter { animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }'
+  + '.leave { animation: slideOutDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }'
+  + '@keyframes slideInUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }'
+  + '@keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(30px); } }'
 
   /* Close Button */
   + '.xbtn {'
-  + '  position: absolute; top: 6px; left: 6px; width: 16px; height: 16px;'
-  + '  background: rgba(241, 245, 249, 0.8); border-radius: 50%; border: none;'
+  + '  position: absolute; top: 8px; left: 8px; width: 18px; height: 18px;'
+  + '  background: rgba(241, 245, 249, 0.5); border-radius: 50%; border: none;'
   + '  display: flex; align-items: center; justify-content: center;'
-  + '  cursor: pointer; color: #64748b; font-size: 10px; z-index: 10;'
+  + '  cursor: pointer; color: #94a3b8; font-size: 10px; z-index: 20;'
   + '  opacity: 0; transition: opacity 0.2s;'
   + '}'
-  + '.xbtn { opacity: 1!important; }'
+  + '.card:hover .xbtn { opacity: 1; }'
 
-  /* --- Review Widget Specifics --- */
-  + '.review-card { padding: 16px; display: flex; flex-direction: column; gap: 8px; }'
-  + '.review-header { display: flex; align-items: center; width: 100%; margin-bottom: 2px; }'
-  + '.user-profile { display: flex; align-items: center; gap: 10px; }'
+  /* === Top Badge (פידבק מהשטח) === */
+  + '.top-badge-container { display: flex; justify-content: flex-start; margin-bottom: 10px; }'
+  + '.modern-badge {'
+  + '  font-size: 10px; font-weight: 700; color: #4f46e5; background: #eef2ff;'
+  + '  padding: 3px 8px; border-radius: 12px;'
+  + '  display: flex; align-items: center; gap: 5px; letter-spacing: 0.3px;'
+  + '}'
+  + '.pulse-dot {'
+  + '  width: 5px; height: 5px; background-color: #4f46e5; border-radius: 50%;'
+  + '  animation: pulse 2s infinite;'
+  + '}'
+  + '@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(79, 70, 229, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }'
+
+  /* === Review Content === */
+  + '.review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }'
+  + '.user-pill { display: flex; align-items: center; gap: 8px; }'
   
-  /* Smart Avatar Fit */
   + '.review-avatar {' 
-  + '  width: 48px; height: 48px; border-radius: 50%;' 
-  + '  border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #eef2f7;'
-  + '  object-fit: cover; aspect-ratio: 1/1;' 
+  + '  width: 30px; height: 30px; border-radius: 50%;' 
+  + '  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);'
+  + '  color: #fff; font-size: 12px; font-weight: 700;'
+  + '  display: grid; place-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);' 
+  + '  object-fit: cover;'
   + '}'
-  
-  + '.avatar-fallback { display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;width:48px;height:48px;border-radius:50%;border:2px solid #fff; aspect-ratio: 1/1; font-size: 18px; }'
-  + '.reviewer-name { font-weight: 700; font-size: 15px; color: #1a1a1a; line-height: 1.2; }'
-  + '.review-text { font-size: 13px; line-height: 1.5; color: #374151; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }'
-  + '.review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }'
-  + '.read-more-btn { font-size: 12px; color: #2563eb; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 5px 0; align-self: flex-start; outline: none!important; }'
-  + '.read-more-btn:hover { text-decoration: underline; }'
-  + '.review-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px; margin-top: 4px; }'
-  + '.stars-wrapper { display: flex; align-items: center; gap: 8px; }'
-  + '.stars { color: #d97706; font-size: 13px; letter-spacing: 1px; font-weight:bold; }'
-  + '.google-icon { width: 16px; height: 16px; opacity: 1; display:block; }'
-  + '.compact-badge { background: rgba(16, 185, 129, 0.15); color: #047857; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }'
+  + '.avatar-fallback { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; display:grid; place-items:center; font-weight:700; font-size:12px; }'
 
-  /* --- Purchase Widget Specifics --- */
-  + '.purchase-card { height: 100px; padding: 0; display: flex; flex-direction: row; gap: 0; }'
+  + '.reviewer-name { font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px; }'
   
-  /* Course Wrapper (Fixed Width) */
-  + '.course-img-wrapper {'
-  + '  flex: 0 0 100px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center;'
-  + '}'
+  /* Rating + Google Logo */
+  + '.rating-container { display: flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #f1f5f9; padding: 3px 6px; border-radius: 6px; }'
+  + '.stars { color: #f59e0b; font-size: 11px; letter-spacing: 1px; }'
+  + '.g-icon-svg { width: 12px; height: 12px; display: block; }'
+
+  + '.review-text { font-size: 13px; line-height: 1.4; color: #334155; font-weight: 400; margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }'
   
-  /* Class for REAL images (Full cover, no padding) */
-  + '.course-img.real-photo {'
-  + '  width: 100%; height: 100%; object-fit: cover; padding: 0; display: block;'
+  /* === Smart Marker Style === */
+  + '.smart-mark {'
+  + '  background: linear-gradient(to bottom, transparent 65%, #fef08a 65%);'
+  + '  color: #0f172a; font-weight: 700; padding: 0 1px;'
   + '}'
 
-  /* Class for DEFAULT icons (Contain, with padding) */
-  + '.course-img.default-icon {'
-  + '  width: 100%; height: 100%; object-fit: contain; padding: 12px; display: block;'
-  + '}'
+  /* --- Purchase Widget Specifics (התאמה לקומפקטיות) --- */
+  + '.purchase-card { height: 85px; padding: 0; display: flex; flex-direction: row; gap: 0; width: 290px; }'
+  + '.course-img-wrapper { flex: 0 0 85px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center; }'
+  + '.course-img { width: 100%; height: 100%; object-fit: cover; }'
+  + '.course-img.default-icon { object-fit: contain; padding: 12px; }'
+  + '.p-content { flex-grow: 1; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; text-align: right; }'
+  + '.fomo-header { display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 2px; }'
+  + '.fomo-name { font-weight: 700; color: #1e293b; }'
+  + '.fomo-body { font-size: 12px; color: #334155; line-height: 1.2; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }'
+  + '.product-highlight { font-weight: 600; color: #4f46e5; }'
+  + '.fomo-footer-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #ef4444; font-weight: 600; }'
+  + '.pulsing-dot { width: 5px; height: 5px; background-color: #ef4444; border-radius: 50%; display:inline-block; }'
   
-  + '.pimg-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 700; background: #f1f5f9; }'
-  + '.p-content { flex-grow: 1; padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: right; height: 100%; min-width: 0; }'
-  + '.fomo-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }'
-  + '.fomo-name { font-weight: 700; color: #1e293b; font-size: 14px; }'
-  + '.fomo-time { font-size: 11px; padding-left: 20px; }'
-  + '.fomo-body { font-size: 14px; color: #334155; line-height: 1.2; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }'
-  + '.product-highlight { font-weight: 500; color: #2563eb; }'
-  + '.fomo-footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }'
-  + '.live-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #ef4444; font-weight: 600; }'
-  + '.pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; position: relative; display:inline-block; margin-right:5px; }'
-  + '.pulsing-dot::after { content: ""; position: absolute; width: 100%; height: 100%; top: 0; left: 0; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; opacity: 0.6; }'
-  + '.timer-bar { position: absolute; bottom: 0; right: 0; height: 3px; background: linear-gradient(90deg, #2563eb, #9333ea); width: 100%; transform-origin: right; animation: timerShrink linear forwards; }'
-  + '@keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(3); opacity: 0; } }'
-  + '@keyframes timerShrink { from { width: 100%; } to { width: 0%; } }'
-   
   + '@media (max-width:480px){'
   + '  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }'
-  + '  .card { border-radius: 0; }'
-  + '  .review-card { width: 100%!important; max-width: 100%!important; padding: 12px 14px!important; gap: 4px!important; margin: 0!important; }'
-  + '  .review-avatar, .avatar-fallback { width: 40px!important; height: 40px!important; font-size: 16px!important; }'
-  + '  .reviewer-name { font-size: 14px!important; }'
-  + '  .review-text { font-size: 12px!important; margin-bottom: 2px!important; }'
-  + '  .review-footer { padding-top: 6px!important; margin-top: 2px!important; }'
-  + '  .purchase-card { width: 100%!important; margin: 0!important; height: 90px!important; box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important; }'
-  + '  .course-img-wrapper { flex: 0 0 90px!important; }'
-  + '  .p-content { padding: 8px 12px!important; }'
-  + '  .fomo-name { font-size: 13px!important; }'
+  + '  .card { width: 95%!important; margin: 0 auto 10px!important; border-radius: 12px; }'
   + '}'
   ;
   root.appendChild(style);
@@ -214,7 +197,6 @@
 
   /* ---- helpers ---- */
   function firstLetter(s){ s=(s||"").trim(); return (s[0]||"?").toUpperCase(); }
-  function colorFromString(s){ s=s||""; for(var h=0,i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return "hsl("+(h%360)+" 70% 45%)"; }
   function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;","'":"&#39;"}[c]);}); }
   function firstName(s){ s=String(s||"").trim(); var parts=s.split(/\s+/); return parts[0]||s; }
   function normalizeSpaces(text){ return (text||"").replace(/\s+/g," ").trim(); }
@@ -229,7 +211,7 @@
     }catch(_){ return ""; }
   }
 
-  function renderMonogram(name){ var d=document.createElement("div"); d.className="avatar-fallback"; d.textContent=firstLetter(name); d.style.background=colorFromString(name); return d; }
+  function renderMonogram(name){ var d=document.createElement("div"); d.className="avatar-fallback"; d.textContent=firstLetter(name); return d; }
   function renderAvatarPreloaded(name, url){
     var shell = renderMonogram(name);
     if(url){
@@ -314,7 +296,6 @@
   /* persistence */
   var itemsSig = "0_0";
   function itemsSignature(arr){ return arr.length + "_" + (arr[0]?arr[0].kind:"x"); } 
-  
   function saveState(idxShown, sig, opt){
     try {
       var st = { idx: idxShown, shownAt: opt && opt.shownAt ? opt.shownAt : Date.now(), sig: sig };
@@ -334,31 +315,12 @@
     return out;
   }
 
-  /* === Demo Generator === */
-  function generateDemoItems() {
-      var demos = [];
-      if (REVIEWS_EP) {
-          demos.push({ kind:"review", data: { authorName: "ישראל ישראלי", text: "שירות מצוין, מאוד נהניתי מהמוצר!", rating: 5, profilePhotoUrl: "" } });
-          demos.push({ kind:"review", data: { authorName: "מיכל כהן", text: "משלוח מהיר ואחלה שירות לקוחות.", rating: 5, profilePhotoUrl: "" } });
-      }
-      if (PURCHASES_EP) {
-          // בדמו שולחים תמונה ריקה כדי שהקוד ישתמש בתמונת ברירת המחדל שנבחרה
-          demos.push({ kind:"purchase", data: { buyer: "דניאל", product: "חבילת פרימיום", image: "", purchased_at: new Date().toISOString() } });
-          demos.push({ kind:"purchase", data: { buyer: "נועה", product: "קורס דיגיטלי", image: "", purchased_at: new Date().toISOString() } });
-      }
-      return demos;
-  }
-
-  /* ---- rotation ---- */
+  /* rotation */
   var items=[], idx=0, loop=null, preTimer=null;
   var isDismissed = false;
   var currentCard = null;
   var fadeTimeout = null;
   var removeTimeout = null;
-  var isPausedForReadMore = false;
-  var currentShowDuration = 0;
-  var currentShowStart = 0;
-  var remainingShowMs = 0;
 
   function clearShowTimers(){
     if(fadeTimeout){ clearTimeout(fadeTimeout); fadeTimeout = null; }
@@ -368,41 +330,20 @@
   function scheduleHide(showFor){
     clearShowTimers();
     if(!currentCard) return;
-    currentShowDuration = showFor;
-    currentShowStart = Date.now();
-
     fadeTimeout = setTimeout(function(){
       if(!currentCard) return;
       currentCard.classList.remove("enter");
       currentCard.classList.add("leave");
     }, showFor);
-
     removeTimeout = setTimeout(function(){
       if(currentCard && currentCard.parentNode){ currentCard.parentNode.removeChild(currentCard); }
       currentCard = null;
     }, showFor + 700); 
   }
 
-  function pauseForReadMore(){
-    if(isPausedForReadMore || !currentCard) return;
-    isPausedForReadMore = true;
-    if(loop) clearInterval(loop);
-    if(preTimer) clearTimeout(preTimer);
-    var elapsed = Date.now() - currentShowStart;
-    remainingShowMs = Math.max(0, currentShowDuration - elapsed);
-    clearShowTimers();
-  }
-
-  function resumeFromReadMore(){
-    if(!isPausedForReadMore || !currentCard) return;
-    isPausedForReadMore = false;
-    var showMs = Math.max(2000, remainingShowMs); 
-    scheduleHide(showMs);
-    preTimer = setTimeout(function(){ startFrom(0); }, showMs + GAP_MS);
-  }
-
   /* ---- RENDERERS ---- */
-    
+  
+  // === פונקציית הרינדור המעודכנת לביקורות ===
   function renderReviewCard(item){
     var card = document.createElement("div"); 
     card.className = "card review-card enter";
@@ -411,59 +352,48 @@
     x.onclick = function(){ handleDismiss(); card.remove(); };
     card.appendChild(x);
 
+    // 1. Badge Header (מודרני וקומפקטי)
+    var topBadge = document.createElement("div");
+    topBadge.className = "top-badge-container";
+    topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
+    card.appendChild(topBadge);
+
+    // 2. User & Rating Header (עם לוגו גוגל מובנה)
     var header = document.createElement("div"); header.className = "review-header";
-    var profile = document.createElement("div"); profile.className = "user-profile";
-    profile.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
     
-    var name = document.createElement("span"); name.className = "reviewer-name"; 
-    name.textContent = item.authorName;
-    profile.appendChild(name);
+    var userPill = document.createElement("div"); userPill.className = "user-pill";
+    userPill.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
+    var name = document.createElement("span"); name.className = "reviewer-name"; name.textContent = item.authorName;
+    userPill.appendChild(name);
     
-    header.appendChild(profile);
-    
-    var badge = document.createElement("div"); badge.className="compact-badge";
-    badge.innerHTML = '<svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID';
-    
+    header.appendChild(userPill);
+
+    var ratingDiv = document.createElement("div"); ratingDiv.className = "rating-container";
+    ratingDiv.innerHTML = `
+      <svg class="g-icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05"/>
+        <path d="M12 4.61c1.61 0 3.09.56 4.23 1.64l3.18-3.18C17.45 1.19 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <div class="stars">★★★★★</div>
+    `;
+    header.appendChild(ratingDiv);
+    card.appendChild(header);
+
+    // 3. Body with Smart Highlights
     var body = document.createElement("div"); 
     body.className = "review-text";
-    body.textContent = item.text; 
-    
-    var readMoreBtn = document.createElement("button");
-    readMoreBtn.className = "read-more-btn";
-    readMoreBtn.textContent = "קרא עוד...";
-    readMoreBtn.style.display = "none"; 
-
-    setTimeout(function(){
-      if (body.scrollHeight > body.clientHeight + 2) {
-        readMoreBtn.style.display = "block";
-      }
-    }, 0);
-
-    readMoreBtn.onclick = function(e){
-      e.stopPropagation();
-      var isExpanded = body.classList.toggle("expanded");
-      readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
-      if(isExpanded) pauseForReadMore(); else resumeFromReadMore();
-    };
-
-    var footer = document.createElement("div"); footer.className = "review-footer";
-    var stars = document.createElement("div"); stars.className = "stars-wrapper";
-    
-    stars.innerHTML = '<svg class="google-icon" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>'
-                    + '<div class="stars">★★★★★</div>';
-    
-    footer.appendChild(stars);
-    footer.appendChild(badge); 
-
-    card.appendChild(x);
-    card.appendChild(header);
+    // יישום המרקר החכם על הטקסט
+    body.innerHTML = applySmartHighlight(escapeHTML(item.text)); 
     card.appendChild(body);
-    card.appendChild(readMoreBtn);
-    card.appendChild(footer);
-    
+
+    // הפוטר הוסר לחלוטין לקבלת מראה קומפקטי
+
     return card;
   }
 
+  // === פונקציית הרינדור לרכישות (מותאמת לעיצוב הקומפקטי) ===
   function renderPurchaseCard(p, overrideTime){
     var card = document.createElement("div"); 
     card.className = "card purchase-card enter";
@@ -474,59 +404,28 @@
 
     var imgWrap = document.createElement("div"); imgWrap.className = "course-img-wrapper";
     var img = document.createElement("img"); 
-    
-    // === לוגיקת תמונה היברידית ===
-    // 1. האם יש תמונה אמיתית מה-API (ארוכה מ-5 תווים)?
     var isRealImage = (p.image && p.image.length > 5);
-    
-    // 2. קבע את המקור
     var imageSource = isRealImage ? p.image : DEFAULT_PRODUCT_IMG;
-    
-    // 3. הוסף קלאס מתאים: אם אמיתי -> "real-photo", אם דיפולט -> "default-icon"
     img.className = isRealImage ? "course-img real-photo" : "course-img default-icon";
-    
     img.src = imageSource;
-    
-    img.onerror = function(){ 
-        this.style.display='none'; 
-        var fb=document.createElement('div'); 
-        fb.className='pimg-fallback'; 
-        fb.textContent='✓'; 
-        imgWrap.appendChild(fb); 
-    };
-    
+    img.onerror = function(){ this.style.display='none'; var fb=document.createElement('div'); fb.className='pimg-fallback'; fb.textContent='✓'; imgWrap.appendChild(fb); };
     imgWrap.appendChild(img);
 
     var content = document.createElement("div"); content.className = "p-content";
-    
     var header = document.createElement("div"); header.className = "fomo-header";
-    header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>'
-                      + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
-    
+    header.innerHTML = '<span class="fomo-name">' + escapeHTML(firstName(p.buyer)) + '</span>' + '<span class="fomo-time">' + escapeHTML(timeAgo(p.purchased_at)) + '</span>';
     var body = document.createElement("div"); body.className = "fomo-body";
-    
     var dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
-    
     body.innerHTML = escapeHTML(dynamicVerb) + ' <span class="product-highlight">' + escapeHTML(p.product) + '</span>';
-
-    var footer = document.createElement("div"); footer.className = "fomo-footer-row";
     
-    // Uses TXT_LIVE variable
-    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div>'+ escapeHTML(TXT_LIVE) +'</div>'
-                      + '<div class="compact-badge"><svg width="10" height="10" fill="currentColor" viewBox="0 0 512 512"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM369 209L241 337c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47L335 175c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"/></svg> מאומת EVID</div>';
+    var footer = document.createElement("div"); footer.className = "fomo-footer-row";
+    footer.innerHTML = '<div class="live-indicator"><div class="pulsing-dot"></div> '+ escapeHTML(TXT_LIVE) +'</div>';
 
     content.appendChild(header);
     content.appendChild(body);
     content.appendChild(footer);
-
-    var timer = document.createElement("div"); timer.className = "timer-bar";
-    var duration = overrideTime ? overrideTime : SHOW_MS;
-    
-    timer.style.animationDuration = (duration/1000) + 's';
-    
     card.appendChild(imgWrap);
     card.appendChild(content);
-    card.appendChild(timer);
 
     return card;
   }
@@ -534,14 +433,9 @@
   function showNext(overrideDuration, preserveTimestamp){
     if(!items.length || isDismissed) return;
     clearShowTimers();
-    isPausedForReadMore = false;
 
     var itm = items[idx % items.length];
-    
-    if (!preserveTimestamp) {
-        saveState(idx % items.length, itemsSig); 
-    }
-    
+    if (!preserveTimestamp) saveState(idx % items.length, itemsSig); 
     if (!preserveTimestamp) idx++; 
 
     warmForItem(itm).then(function(){
@@ -550,45 +444,14 @@
       var card = (itm.kind==="purchase") ? renderPurchaseCard(itm.data, duration) : renderReviewCard(itm.data);
       
       var isMobile = window.innerWidth <= 480;
-
       if (isMobile) {
-          // Reset desktop styles
-          wrap.style.top = "auto";
-          wrap.style.left = "0px";
-          wrap.style.right = "0px";
-
-          if (itm.kind === "review") {
-             // STICKY BOTTOM FOR REVIEWS
-             wrap.style.bottom = "0px";
-             card.style.borderRadius = "16px 16px 0 0";
-             card.style.margin = "0"; // Ensure no margin
-          } else {
-             // FLOATING FOR PURCHASES
-             wrap.style.bottom = "20px";
-             card.style.borderRadius = "16px";
-             card.style.margin = "0"; // Reset margin
-          }
+          // מובייל: תמיד למטה, מודבק
+          wrap.style.top = "auto"; wrap.style.left = "0px"; wrap.style.right = "0px"; wrap.style.bottom = "10px";
       } else {
-          // DESKTOP LOGIC
-          card.style.borderRadius = "16px";
-          card.style.margin = "0";
-          
-          wrap.style.top = "auto";
-          wrap.style.bottom = "auto";
-          wrap.style.left = "auto";
-          wrap.style.right = "auto";
-
-          if (WIDGET_POS.includes("top")) {
-              wrap.style.top = "60px";
-          } else {
-              wrap.style.bottom = "20px"; 
-          }
-
-          if (WIDGET_POS.includes("left")) {
-              wrap.style.left = "20px";
-          } else {
-              wrap.style.right = "20px"; 
-          }
+          // דסקטופ: לפי הגדרה
+          wrap.style.top = "auto"; wrap.style.bottom = "auto"; wrap.style.left = "auto"; wrap.style.right = "auto";
+          if (WIDGET_POS.includes("top")) wrap.style.top = "60px"; else wrap.style.bottom = "20px";
+          if (WIDGET_POS.includes("left")) wrap.style.left = "20px"; else wrap.style.right = "20px"; 
       }
       
       wrap.innerHTML=""; 
@@ -602,26 +465,18 @@
     if(loop) clearInterval(loop);
     if(preTimer) clearTimeout(preTimer);
     if(isDismissed) return;
-
     var cycle = SHOW_MS + GAP_MS;
-    
     function begin(){
       if(isDismissed) return;
-      showNext(); 
-      loop = setInterval(showNext, cycle);
+      showNext(); loop = setInterval(showNext, cycle);
     }
-    
     if (delay > 0) preTimer = setTimeout(begin, delay);
     else begin();
   }
   
   function resumeCard(remainingTime){
-      showNext(remainingTime, true); 
-      idx++; 
-      preTimer = setTimeout(function(){
-          showNext(); 
-          loop = setInterval(showNext, SHOW_MS + GAP_MS);
-      }, remainingTime + GAP_MS);
+      showNext(remainingTime, true); idx++; 
+      preTimer = setTimeout(function(){ showNext(); loop = setInterval(showNext, SHOW_MS + GAP_MS); }, remainingTime + GAP_MS);
   }
 
   function handleDismiss(){
@@ -641,7 +496,6 @@
     Promise.all([p1,p2]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
       rev = rev.filter(function(v){ return normalizeSpaces(v.data.text).length > 0; });
-      
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
 
@@ -654,37 +508,19 @@
         wrap.classList.add('ready');
         var state = restoreState();
         var now = Date.now();
-        
         var runLogic = function() {
             var isDemo = (items[0] && items[0].data && items[0].data.authorName === "ישראל ישראלי");
-            
             if (!isDemo && state && state.sig === itemsSig) {
               if (state.manualClose && state.snoozeUntil > now) {
                   setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
               } else if (!state.manualClose) {
                   var elapsed = now - state.shownAt;
-                  if (elapsed < SHOW_MS) {
-                      idx = state.idx; 
-                      var remaining = Math.max(1000, SHOW_MS - elapsed); 
-                      resumeCard(remaining);
-                  } else {
-                      idx = state.idx + 1;
-                      startFrom(0); 
-                  }
-              } else {
-                  startFrom(INIT_MS);
-              }
-            } else {
-              if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
-              else startFrom(0);
-            }
+                  if (elapsed < SHOW_MS) { idx = state.idx; resumeCard(Math.max(1000, SHOW_MS - elapsed)); } 
+                  else { idx = state.idx + 1; startFrom(0); }
+              } else { startFrom(INIT_MS); }
+            } else { if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS); else startFrom(0); }
         };
-
-        if (state && !state.manualClose) {
-            setTimeout(runLogic, PAGE_TRANSITION_DELAY);
-        } else {
-            runLogic();
-        }
+        if (state && !state.manualClose) setTimeout(runLogic, PAGE_TRANSITION_DELAY); else runLogic();
       });
     });
   }
