@@ -1,4 +1,4 @@
-/*! both-controller v4.1.8 — Glass Design + Server Side Highlight (GPT) + Read More */
+/*! both-controller v4.1.11 — Glass Design + Dynamic Font Support */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -18,6 +18,9 @@
   var TXT_LIVE    = (scriptEl && scriptEl.getAttribute("data-live-text")) || "מבוקש עכשיו";
   var TXT_BOUGHT  = (scriptEl && scriptEl.getAttribute("data-purchase-label")) || "רכש/ה";
   
+  // *** FONT CONFIGURATION ***
+  var SELECTED_FONT = (scriptEl && scriptEl.getAttribute("data-font")) || "Rubik";
+  
   var WIDGET_POS  = (scriptEl && scriptEl.getAttribute("data-position")) || "bottom-right";
   var DEFAULT_PRODUCT_IMG = (scriptEl && scriptEl.getAttribute("data-default-image")) || "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
@@ -28,9 +31,6 @@
      1. HELPERS & LOGIC
      ========================================================= */
   
-  // NOTE: GPT now handles the highlighting via HTML tags. 
-  // We no longer need the client-side 'applySmartHighlight' logic.
-
   var HEBREW_VERBS = {
       "רכש/ה": { m: "רכש", f: "רכשה" }, "קנה/תה": { m: "קנה", f: "קנתה" }, "הזמין/ה": { m: "הזמין", f: "הזמינה" },
       "בחר/ה": { m: "בחר", f: "בחרה" }, "הצטרף/ה": { m: "הצטרף", f: "הצטרפה" }, "נרשם/ה": { m: "נרשם", f: "נרשמה" },
@@ -50,17 +50,18 @@
   }
 
   /* =========================
-     2. STYLES & FONTS
+     2. STYLES & FONTS (DYNAMIC)
      ========================= */
-  var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Rubik:wght@300;400;500;700&display=swap';
   
   function ensureFontInHead(){
     try{
-      if (!document.getElementById('evid-google-fonts')) {
+      var fontId = 'evid-font-' + SELECTED_FONT.toLowerCase();
+      if (!document.getElementById(fontId)) {
         var link = document.createElement('link');
-        link.id = 'evid-google-fonts';
+        link.id = fontId;
         link.rel = 'stylesheet';
-        link.href = FONT_HREF;
+        // טעינה דינמית של הפונט הנבחר
+        link.href = 'https://fonts.googleapis.com/css2?family=' + SELECTED_FONT + ':wght@300;400;500;600;700;800&display=swap';
         document.head.appendChild(link);
       }
       return Promise.resolve(); 
@@ -71,7 +72,8 @@
   style.textContent = ''
   + ':host{all:initial;}'
   + ':host, :host *, .wrap, .wrap * {'
-  + '  font-family: "Assistant", "Rubik", sans-serif !important;'
+  // שימוש במשתנה הפונט שנבחר
+  + '  font-family: "' + SELECTED_FONT + '", sans-serif !important;'
   + '  box-sizing: border-box;'
   + '}'
   + '.wrap{'
@@ -262,9 +264,13 @@
       else if(Array.isArray(data.items)) arr=data.items;
     }
     return arr.map(function(x){
+      // סינון חכם: אם הטקסט מכיל שאריות של GPT כמו "אנא ספק לי" - מתעלמים
+      var txt = x.Content||x.text||"";
+      if(txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
+
       if(as==="review") return { kind:"review", data:{
         authorName: x.Header||x.authorName||x.name||"Anonymous",
-        text: x.Content||x.text||"",
+        text: txt,
         rating: x.rating||5,
         profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
       }};
@@ -276,7 +282,7 @@
           purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
         }};
       }
-    });
+    }).filter(Boolean); // מנקה ערכי null
   }
 
   /* persistence */
@@ -392,8 +398,7 @@
     var body = document.createElement("div"); 
     body.className = "review-text";
     
-    // CHANGED: We now inject the text AS IS (as HTML) because it contains our <span> tags from GPT.
-    // We removed 'applySmartHighlight' and 'escapeHTML' here.
+    // Server Side Highlight: We use innerHTML to allow <span> tags
     body.innerHTML = item.text; 
     
     var readMoreBtn = document.createElement("button");
@@ -521,12 +526,16 @@
 
     Promise.all([p1,p2]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
-      rev = rev.filter(function(v){ return normalizeSpaces(v.data.text).length > 0; });
+      // סינון נוסף ליתר ביטחון
+      rev = rev.filter(function(v){ 
+          var t = normalizeSpaces(v.data.text);
+          return t.length > 0 && !t.includes("אנא ספק לי"); 
+      });
       items = interleave(rev, pur);
       itemsSig = itemsSignature(items);
 
       if(!items.length) {
-          items = []; // Removed demo items to avoid confusion if empty
+          items = []; 
           if(!items.length) return;
       }
 
