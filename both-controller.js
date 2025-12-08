@@ -1,4 +1,4 @@
-/*! both-controller v4.1.7 — Glass Design + Auto Highlight + Read More */
+/*! both-controller v4.1.8 — Glass Design + Server Side Highlight (GPT) + Read More */
 (function () {
   var hostEl = document.getElementById("reviews-widget");
   if (!hostEl) return;
@@ -25,22 +25,11 @@
   var STORAGE_KEY = 'evid:widget-state:v4';
 
   /* =========================================================
-      1. SMART DICTIONARY & HIGHLIGHTER
+     1. HELPERS & LOGIC
      ========================================================= */
-  var POWER_WORDS = [
-      "מעולה", "מדהים", "איכות", "איכותי", "שירות", "נדיר", "טירוף",
-      "ממליץ", "מומלץ", "תודה", "אליפות", "מהיר", "בזמן", "הגיע",
-      "חוויה", "כיף", "נהדר", "מקצועי", "יחס", "מושלם", "אהבתי",
-      "פצצה", "וואו", "מרוצה", "הכי טוב", "שווה", "בטוח", "מטורף"
-  ];
-
-  function applySmartHighlight(text) {
-      if (!text) return "";
-      var newText = text;
-      var pattern = new RegExp("(" + POWER_WORDS.join("|") + ")", "gi");
-      newText = newText.replace(pattern, '<span class="smart-mark">$1</span>');
-      return newText;
-  }
+  
+  // NOTE: GPT now handles the highlighting via HTML tags. 
+  // We no longer need the client-side 'applySmartHighlight' logic.
 
   var HEBREW_VERBS = {
       "רכש/ה": { m: "רכש", f: "רכשה" }, "קנה/תה": { m: "קנה", f: "קנתה" }, "הזמין/ה": { m: "הזמין", f: "הזמינה" },
@@ -61,7 +50,7 @@
   }
 
   /* =========================
-      2. STYLES & FONTS
+     2. STYLES & FONTS
      ========================= */
   var FONT_HREF = 'https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Rubik:wght@300;400;500;700&display=swap';
   
@@ -402,7 +391,10 @@
     // 3. Body with Read More
     var body = document.createElement("div"); 
     body.className = "review-text";
-    body.innerHTML = applySmartHighlight(escapeHTML(item.text)); 
+    
+    // CHANGED: We now inject the text AS IS (as HTML) because it contains our <span> tags from GPT.
+    // We removed 'applySmartHighlight' and 'escapeHTML' here.
+    body.innerHTML = item.text; 
     
     var readMoreBtn = document.createElement("button");
     readMoreBtn.className = "read-more-btn";
@@ -534,7 +526,7 @@
       itemsSig = itemsSignature(items);
 
       if(!items.length) {
-          items = generateDemoItems();
+          items = []; // Removed demo items to avoid confusion if empty
           if(!items.length) return;
       }
 
