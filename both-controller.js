@@ -230,6 +230,30 @@
     return Promise.resolve();
   }
 
+  /* ---- SUBMIT REVIEW: send to new API instead of GitHub ---- */
+  async function submitReview(name, rating, text) {
+    try {
+      await fetch("https://review-widget-psi.vercel.app/api/save-review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: name,
+          rating: rating,
+          text: text
+        })
+      });
+    } catch (e) {
+      console.error("submitReview failed:", e);
+    }
+  }
+
+  // Expose submit function globally so a form can call window.EvidSubmitReview(...)
+  if (typeof window !== "undefined") {
+    window.EvidSubmitReview = submitReview;
+  }
+
   /* fetchers */
   var JS_MIRRORS = ["https://cdn.jsdelivr.net","https://fastly.jsdelivr.net","https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror){ try { var a=new URL(u), m=new URL(mirror); a.protocol=m.protocol; a.host=m.host; return a.toString(); } catch(_){ return u; } }
