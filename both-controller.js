@@ -27,6 +27,34 @@
   var PAGE_TRANSITION_DELAY = 3000;
   var STORAGE_KEY = 'evid:widget-state:v4';
 
+  // ==== CURRENT SLUG (Business identifier) ====
+  var CURRENT_SLUG = (function () {
+    try {
+      // 1. Explicit data-slug on script tag (if you ever want)
+      if (scriptEl && scriptEl.getAttribute("data-slug")) {
+        return scriptEl.getAttribute("data-slug");
+      }
+
+      // 2. Global window.EVID_SLUG (optional)
+      if (typeof window !== "undefined" && window.EVID_SLUG) {
+        return window.EVID_SLUG;
+      }
+
+      // 3. Derive from REVIEWS_EP path: .../data/<slug>.json
+      if (REVIEWS_EP) {
+        var url = REVIEWS_EP.split("?")[0]; // strip query
+        var lastSegment = url.substring(url.lastIndexOf("/") + 1);
+        if (lastSegment.toLowerCase().endsWith(".json")) {
+          lastSegment = lastSegment.slice(0, -5);
+        }
+        return decodeURIComponent(lastSegment);
+      }
+    } catch (e) {
+      console.warn("Failed to derive CURRENT_SLUG:", e);
+    }
+    return "";
+  })();
+
   /* =========================================================
      1. HELPERS & LOGIC
      ========================================================= */
@@ -230,7 +258,7 @@
     return Promise.resolve();
   }
 
-  /* ---- SUBMIT REVIEW: send to new API instead of GitHub ---- */
+  /* ---- SUBMIT REVIEW: send to new API with slug ---- */
   async function submitReview(name, rating, text) {
     try {
       await fetch("https://review-widget-psi.vercel.app/api/save-review", {
@@ -241,7 +269,8 @@
         body: JSON.stringify({
           name: name,
           rating: rating,
-          text: text
+          text: text,
+          slug: CURRENT_SLUG || ""   // <-- מוסיף את זיהוי העסק
         })
       });
     } catch (e) {
