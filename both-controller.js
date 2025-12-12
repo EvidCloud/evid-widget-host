@@ -308,34 +308,58 @@
   }
   function fetchJSON(url){ return fetchTextWithMirrors(url).then(function(raw){ try{ return JSON.parse(raw); }catch(_){ return { items: [] }; } }); }
 
+  // ---- UPDATED NORMALIZE ARRAY ----
   function normalizeArray(data, as){
-    var arr=[];
-    if(Array.isArray(data)) arr=data;
-    else if(data&&typeof data==="object"){
-      if(Array.isArray(data.reviews)) arr=data.reviews;
-      else if(Array.isArray(data.purchases)) arr=data.purchases;
-      else if(Array.isArray(data.items)) arr=data.items;
-    }
-    return arr.map(function(x){
-      // סינון חכם: אם הטקסט מכיל שאריות של GPT כמו "אנא ספק לי" - מתעלמים
-      var txt = x.Content||x.text||"";
-      if(txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
+    var arr = [];
 
-      if(as==="review") return { kind:"review", data:{
-        authorName: x.Header||x.authorName||x.name||"Anonymous",
-        text: txt,
-        rating: x.rating||5,
-        profilePhotoUrl: x.Photo||x.reviewerPhotoUrl||""
-      }};
-      if(as==="purchase") {
-        return { kind:"purchase", data:{
-          buyer: x.buyerName || x.buyer_name || x.buyer || x.name || x.first_name || "לקוח/ה",
-          product: x.productName || x.product_name || x.item_name || x.product || x.title || "מוצר",
-          image: x.productImage || x.product_image || x.image || "",
-          purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
-        }};
-      }
-    }).filter(Boolean); // מנקה ערכי null
+    if (Array.isArray(data)) {
+      arr = data;
+    } else if (data && typeof data === "object") {
+      // שמירה על תמיכה לאחור עבור מבנים ישנים של JSON (בעיקר לרכישות)
+      if (Array.isArray(data.reviews)) arr = data.reviews;
+      else if (Array.isArray(data.purchases)) arr = data.purchases;
+      else if (Array.isArray(data.items)) arr = data.items;
+    }
+
+    if (as === "review") {
+      // ה-API החדש מחזיר: { name: "...", rating: 5, text: "..." }
+      return arr.map(function (x) {
+        if (!x) return null;
+        var txt = (x.text || "").toString();
+        // סינון שאריות GPT
+        if (txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
+
+        return {
+          kind: "review",
+          data: {
+            authorName: x.name || "Anonymous",
+            rating: typeof x.rating !== "undefined" ? x.rating : 5,
+            text: txt
+          }
+        };
+      }).filter(Boolean);
+    }
+
+    if (as === "purchase") {
+      // השארנו את התמיכה הישנה ברכישות כמו שהיא
+      return arr.map(function(x){
+        if (!x) return null;
+        var txt = x.Content || x.text || "";
+        if (txt && (txt.includes("אנא ספק לי") || txt.includes("כמובן!"))) return null;
+
+        return {
+          kind:"purchase",
+          data:{
+            buyer: x.buyerName || x.buyer_name || x.buyer || x.name || x.first_name || "לקוח/ה",
+            product: x.productName || x.product_name || x.item_name || x.product || x.title || "מוצר",
+            image: x.productImage || x.product_image || x.image || "",
+            purchased_at: x.purchased_at || x.created_at || new Date().toISOString()
+          }
+        };
+      }).filter(Boolean);
+    }
+
+    return [];
   }
 
   /* persistence */
@@ -574,10 +598,27 @@
 
   /* ---- init ---- */
   function loadAll(){
-    var p1 = REVIEWS_EP ? fetchJSON(REVIEWS_EP).then(function(d){ return normalizeArray(d,"review"); }) : Promise.resolve([]);
-    var p2 = PURCHASES_EP ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }) : Promise.resolve([]);
+    // ---- REVIEWS: טוען מה-API החדש לפי הסלאג ----
+    var reviewsPromise = CURRENT_SLUG
+      ? fetch("https://review-widget-psi.vercel.app/api/get-reviews?slug=" + CURRENT_SLUG, {
+          method: "GET",
+          credentials: "omit",
+          cache: "no-store"
+        })
+          .then(function(res){
+            if (!res.ok) return [];
+            return res.json();
+          })
+          .then(function(d){ return normalizeArray(d, "review"); })
+          .catch(function(){ return []; })
+      : Promise.resolve([]);
 
-    Promise.all([p1,p2]).then(function(r){
+    // ---- PURCHASES: עדיין נטען מ-JSON ישן (אם יש) ----
+    var purchasesPromise = PURCHASES_EP
+      ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }).catch(function(){ return []; })
+      : Promise.resolve([]);
+
+    Promise.all([reviewsPromise, purchasesPromise]).then(function(r){
       var rev = r[0]||[], pur = r[1]||[];
       // סינון נוסף ליתר ביטחון
       rev = rev.filter(function(v){ 
