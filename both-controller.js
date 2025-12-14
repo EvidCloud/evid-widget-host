@@ -1,15 +1,23 @@
+/* both-controller v4.2.7 — FIX: no "Unexpected end of input" + reviews endpoint 404 fallback to Firestore */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const __MODULE_URL__ = new URL(import.meta.url);
 const __WIDGET_ID__ = (__MODULE_URL__.searchParams.get("id") || "").trim();
 const __SLUG_QS__ = (__MODULE_URL__.searchParams.get("slug") || "").trim();
 
-// ✅ תמיד נכריח את ה-API של הביקורות להיות אבסולוטי ויציב
-const REVIEWS_API_ORIGIN = "https://review-widget-psi.vercel.app";
-
 /* =========================================
-   1. הגדרות FIREBASE
+   1) FIREBASE
    ========================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCbRxawm1ewrPGMQKo3bqUCAgFzmtSjsUU",
@@ -21,27 +29,28 @@ const firebaseConfig = {
   measurementId: "G-TXV4PH2YY8"
 };
 
-// אתחול Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 /* =========================================
-   2. לוגיקה ראשית
+   2) MAIN
    ========================================= */
 (async function () {
-  var hostEl = document.getElementById("reviews-widget");
+  // Host
+  let hostEl = document.getElementById("reviews-widget");
   if (!hostEl) {
     hostEl = document.createElement("div");
     hostEl.id = "reviews-widget";
     document.body.appendChild(hostEl);
   }
 
-  var root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
+  const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
 
   function getThisScriptEl() {
+    // In ES modules document.currentScript is usually null, so we locate the <script> by src path.
     try {
       const me = new URL(import.meta.url, document.baseURI);
-      const meKey = me.origin + me.pathname; // בלי query
+      const meKey = me.origin + me.pathname; // no query
       const scripts = Array.from(document.getElementsByTagName("script"));
       for (let i = scripts.length - 1; i >= 0; i--) {
         const s = scripts[i];
@@ -56,268 +65,139 @@ const db = getFirestore(app);
     return null;
   }
 
-  var currentScript = getThisScriptEl();
+  const currentScript = getThisScriptEl();
 
-  // ברירות מחדל
-  let DYNAMIC_SETTINGS = {
+  // Defaults (will be overridden by Firebase widget doc if exists)
+  const DYNAMIC_SETTINGS = {
     color: "#4f46e5",
     font: "Rubik",
     position: "bottom-right",
     delay: 0,
-    businessName: ""
+    businessName: "",
+    slug: ""
   };
 
-  // --- שליפת הנתונים מ-Firebase ---
+  // ===== Load widget settings from Firestore (widgets/{id}) =====
   try {
     const widgetId = __WIDGET_ID__;
     if (widgetId) {
       const docRef = doc(db, "widgets", widgetId);
       const docSnap = await getDoc(docRef);
-
       if (docSnap.exists()) {
-        const data = docSnap.data();
+        const data = docSnap.data() || {};
         const s = data.settings || {};
 
-        DYNAMIC_SETTINGS.color = s.color || "#4f46e5";
+        DYNAMIC_SETTINGS.color = s.color || DYNAMIC_SETTINGS.color;
 
-        const rawFont = String(s.font || "Rubik");
-        DYNAMIC_SETTINGS.font = rawFont.split(",")[0].replace(/['"]/g, "").trim() || "Rubik";
+        const rawFont = String(s.font || DYNAMIC_SETTINGS.font);
+        DYNAMIC_SETTINGS.font = rawFont.split(",")[0].replace(/['"]/g, "").trim() || DYNAMIC_SETTINGS.font;
 
-        DYNAMIC_SETTINGS.position = s.position || "bottom-right";
-        DYNAMIC_SETTINGS.delay = (Number(s.delay || 0)) * 1000;
+        DYNAMIC_SETTINGS.position = s.position || DYNAMIC_SETTINGS.position;
+        DYNAMIC_SETTINGS.delay = Number(s.delay || 0) * 1000;
         DYNAMIC_SETTINGS.businessName = data.businessName || "";
 
-        console.log("EVID: Widget settings loaded from Firebase", DYNAMIC_SETTINGS);
+        // try to derive a slug from widget doc (if you ever store placeId there)
+        DYNAMIC_SETTINGS.slug = String(
+          data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
+        ).trim();
+
+        console.log("EVID: Widget settings loaded from Firebase", { ...DYNAMIC_SETTINGS });
       }
     }
   } catch (e) {
     console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
   }
 
-  /* ---- config ---- */
-  var REVIEWS_EP = currentScript && currentScript.getAttribute("data-reviews-endpoint");
-  var PURCHASES_EP = currentScript && currentScript.getAttribute("data-purchases-endpoint");
+  // ===== Read config from <script> attributes (if present) =====
+  const REVIEWS_EP_ATTR = currentScript ? currentScript.getAttribute("data-reviews-endpoint") : "";
+  const PURCHASES_EP = currentScript ? currentScript.getAttribute("data-purchases-endpoint") : "";
 
-  var SHOW_MS = Number((currentScript && currentScript.getAttribute("data-show-ms")) || 15000);
-  var GAP_MS = Number((currentScript && currentScript.getAttribute("data-gap-ms")) || 6000);
+  const SHOW_MS = Number((currentScript && currentScript.getAttribute("data-show-ms")) || 15000);
+  const GAP_MS = Number((currentScript && currentScript.getAttribute("data-gap-ms")) || 6000);
+  const INIT_MS = DYNAMIC_SETTINGS.delay || Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
+  const DISMISS_COOLDOWN_MS = Number((currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000);
 
-  var INIT_MS = DYNAMIC_SETTINGS.delay || Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
-  var DISMISS_COOLDOWN_MS = Number((currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000);
+  const TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
+  const TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
 
-  var TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
-  var TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
+  const SELECTED_FONT = DYNAMIC_SETTINGS.font;
+  const WIDGET_POS = DYNAMIC_SETTINGS.position;
+  const THEME_COLOR = DYNAMIC_SETTINGS.color;
 
-  var SELECTED_FONT = DYNAMIC_SETTINGS.font;
-  var WIDGET_POS = DYNAMIC_SETTINGS.position;
-  var THEME_COLOR = DYNAMIC_SETTINGS.color;
-
-  var DEFAULT_PRODUCT_IMG =
+  const DEFAULT_PRODUCT_IMG =
     (currentScript && currentScript.getAttribute("data-default-image")) ||
     "https://cdn-icons-png.flaticon.com/128/2331/2331970.png";
 
-  var PAGE_TRANSITION_DELAY = 3000;
-  var STORAGE_KEY = "evid:widget-state:v4";
+  const PAGE_TRANSITION_DELAY = 3000;
+  const STORAGE_KEY = "evid:widget-state:v4";
 
-  // ✅ זה התיקון הקריטי:
-  // הביקורות שלך נשמרות עם slug=widgetId, לכן ה-slug האמיתי תמיד יהיה ה-ID.
-  var CURRENT_SLUG = (function () {
+  // ===== CURRENT SLUG =====
+  const CURRENT_SLUG = (function () {
     try {
-      if (__WIDGET_ID__) return __WIDGET_ID__; // ✅ ראשון!
+      // 1) querystring slug on module url
       if (__SLUG_QS__) return __SLUG_QS__;
+
+      // 2) data-slug attribute
       if (currentScript && currentScript.getAttribute("data-slug")) {
-        return String(currentScript.getAttribute("data-slug")).trim();
+        const v = String(currentScript.getAttribute("data-slug")).trim();
+        if (v) return v;
       }
+
+      // 3) firebase widget doc (if ever exists)
+      if (DYNAMIC_SETTINGS && DYNAMIC_SETTINGS.slug) return String(DYNAMIC_SETTINGS.slug).trim();
+
+      // 4) preview setter
       if (typeof window !== "undefined" && window.EVID_SLUG) return String(window.EVID_SLUG).trim();
+
+      // 5) last resort: widget id
+      if (__WIDGET_ID__) return __WIDGET_ID__;
     } catch (e) {
-      console.warn("Failed to derive CURRENT_SLUG:", e);
+      console.warn("EVID: Failed to derive CURRENT_SLUG:", e);
     }
     return "";
   })();
 
-  /* =========================================================
-     HELPERS
-     ========================================================= */
-
-  var HEBREW_VERBS = {
+  // ===== Helpers =====
+  const HEBREW_VERBS = {
     "רכש/ה": { m: "רכש", f: "רכשה" },
     "קנה/תה": { m: "קנה", f: "קנתה" },
     "הזמין/ה": { m: "הזמין", f: "הזמינה" },
     "בחר/ה": { m: "בחר", f: "בחרה" },
     "הצטרף/ה": { m: "הצטרף", f: "הצטרפה" },
-    "נרשם/ה": { m: "נרשם", f: "נרשמה" },
-    "הוסיף/ה": { m: "הוסיף", f: "הוסיפה" },
-    "התחדש/ה": { m: "התחדש", f: "התחדשה" },
-    "שריין/ה": { m: "שריין", f: "שריינה" },
-    "הבטיח/ה": { m: "הבטיח", f: "הבטיחה" },
-    "קיבל/ה": { m: "קיבל", f: "קיבלה" },
-    "אהב/ה": { m: "אהב", f: "אהבה" },
-    "נהנה/תה": { m: "נהנה", f: "נהנתה" },
-    "ניסה/תה": { m: "ניסה", f: "ניסתה" },
-    "סגר/ה": { m: "סגר", f: "סגרה" },
-    "למד/ה": { m: "למד", f: "למדה" },
-    "התחיל/ה": { m: "התחיל", f: "התחילה" },
-    "מצא/ה": { m: "מצא", f: "מצאה" },
-    "תפס/ה": { m: "תפס", f: "תפסה" },
-    "חטף/ה": { m: "חטף", f: "חטפה" }
+    "נרשם/ה": { m: "נרשם", f: "נרשמה" }
   };
 
-  var DB_FEMALE =
-    "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נינט,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר,תהל,תמרה,פאטמה,עאישה,מריים,נור,יסמין,זינב,חדיג'ה,אמינה,סוהא,רנא,לילא,נאדיה,סמירה,אמל,מונה,סלמה,היבא,רואן,רים";
+  const DB_FEMALE =
+    "שרה,רחל,לאה,רבקה,אסתר,מרים,חנה,אביגיל,אבישג,אביה,אדל,אורלי,איילה,אילנה,אפרת,גאיה,גלי,דנה,דניאלה,הדר,הילה,ורד,זהבה,חיה,טליה,יעל,יערה,לי,ליה,ליהי,לינוי,לילך,מאיה,מיכל,מירב,מור,מורן,מירי,נטע,נועה,נעמה,ספיר,עדי,ענבל,ענת,קרן,רוני,רות,רותם,רינה,שולמית,שירה,שירלי,שני,תמר";
 
   function getGenderedVerb(name, selectedKey) {
-    var key = (selectedKey || "רכש/ה").trim();
+    const key = (selectedKey || "רכש/ה").trim();
     if (!HEBREW_VERBS[key]) return key;
-    var first = (name || "")
-      .trim()
-      .split(/\s+/)[0]
-      .replace(/[^א-תa-z]/gi, "");
+    const first = (name || "").trim().split(/\s+/)[0].replace(/[^א-תa-z]/gi, "");
     return DB_FEMALE.indexOf(first) > -1 ? HEBREW_VERBS[key].f : HEBREW_VERBS[key].m;
   }
 
-  function ensureFontInHead() {
-    try {
-      var fontId = "evid-font-" + SELECTED_FONT.toLowerCase().replace(/\s+/g, "-");
-      if (!document.getElementById(fontId)) {
-        var link = document.createElement("link");
-        link.id = fontId;
-        link.rel = "stylesheet";
-        link.href =
-          "https://fonts.googleapis.com/css2?family=" +
-          SELECTED_FONT.replace(/\s+/g, "+") +
-          ":wght@300;400;500;600;700;800&display=swap";
-        document.head.appendChild(link);
-      }
-      return Promise.resolve();
-    } catch (_) {
-      return Promise.resolve();
-    }
-  }
-
-  var style = document.createElement("style");
-  style.textContent =
-    ""
-    + ":host{all:initial;}"
-    + ":host, :host *, .wrap, .wrap * {"
-    + '  font-family: "' + SELECTED_FONT + '", sans-serif !important;'
-    + "  box-sizing: border-box;"
-    + "}"
-    + ".wrap{"
-    + "  position:fixed; z-index:2147483000;"
-    + "  direction:rtl;"
-    + "  pointer-events:none;"
-    + "  display: block;"
-    + "  transition: bottom 0.3s ease, top 0.3s ease, right 0.3s ease, left 0.3s ease;"
-    + "}"
-    + ".wrap.ready{visibility:visible;opacity:1;}"
-    + ".card {"
-    + "  position: relative;"
-    + "  width: 290px; max-width: 90vw;"
-    + "  background: rgba(255, 255, 255, 0.95);"
-    + "  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);"
-    + "  border-radius: 18px;"
-    + "  border: 1px solid rgba(255, 255, 255, 0.8);"
-    + "  box-shadow: 0 8px 25px -8px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.04);"
-    + "  padding: 16px;"
-    + "  overflow: hidden;"
-    + "  pointer-events: auto;"
-    + "  transition: transform 0.3s ease;"
-    + "  border-top: 4px solid " + THEME_COLOR + ";"
-    + "}"
-    + ".card:hover { transform: translateY(-5px); }"
-    + ".enter { animation: slideInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }"
-    + ".leave { animation: slideOutDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }"
-    + "@keyframes slideInUp { from { opacity: 0; transform: translateY(30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }"
-    + "@keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(30px); } }"
-    + ".xbtn {"
-    + "  position: absolute; top: 8px; left: 8px; width: 18px; height: 18px;"
-    + "  background: rgba(241, 245, 249, 0.5); border-radius: 50%; border: none;"
-    + "  display: flex; align-items: center; justify-content: center;"
-    + "  cursor: pointer; color: #94a3b8; font-size: 10px; z-index: 20;"
-    + "  opacity: 0; transition: opacity 0.2s;"
-    + "}"
-    + ".card:hover .xbtn { opacity: 1; }"
-    + ".top-badge-container { display: flex; justify-content: flex-start; margin-bottom: 10px; }"
-    + ".modern-badge {"
-    + "  font-size: 10px; font-weight: 700;"
-    + "  color: " + THEME_COLOR + ";"
-    + "  background: #eef2ff;"
-    + "  padding: 3px 8px; border-radius: 12px;"
-    + "  display: flex; align-items: center; gap: 5px; letter-spacing: 0.3px;"
-    + "}"
-    + ".pulse-dot {"
-    + "  width: 5px; height: 5px;"
-    + "  background-color: " + THEME_COLOR + ";"
-    + "  border-radius: 50%;"
-    + "  animation: pulse 2s infinite;"
-    + "}"
-    + "@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); } 70% { box-shadow: 0 0 0 4px rgba(79, 70, 229, 0); } 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); } }"
-    + ".review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }"
-    + ".user-pill { display: flex; align-items: center; gap: 8px; }"
-    + ".review-avatar {"
-    + "  width: 30px; height: 30px; border-radius: 50%;"
-    + "  background: linear-gradient(135deg, " + THEME_COLOR + " 0%, #8b5cf6 100%);"
-    + "  color: #fff; font-size: 12px; font-weight: 700;"
-    + "  display: grid; place-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
-    + "  object-fit: cover;"
-    + "}"
-    + ".avatar-fallback { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, " + THEME_COLOR + " 0%, #8b5cf6 100%); color:#fff; display:grid; place-items:center; font-weight:700; font-size:12px; }"
-    + ".reviewer-name { font-size: 14px; font-weight: 700; color: #1e293b; letter-spacing: -0.3px; }"
-    + ".rating-container { display: flex; align-items: center; gap: 5px; background: #fff; border: 1px solid #f1f5f9; padding: 3px 6px; border-radius: 6px; }"
-    + ".stars { color: #f59e0b; font-size: 11px; letter-spacing: 1px; }"
-    + ".g-icon-svg { width: 12px; height: 12px; display: block; }"
-    + ".review-text { font-size: 13px; line-height: 1.4; color: #334155; font-weight: 400; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; transition: all 0.3s ease; }"
-    + ".review-text.expanded { -webkit-line-clamp: unset; overflow: visible; }"
-    + ".read-more-btn { font-size: 11px; color: " + THEME_COLOR + "; font-weight: 700; cursor: pointer; background: transparent!important; border: none; padding: 2px 0 0 0; outline: none!important; margin-top: 2px; }"
-    + ".read-more-btn:hover { text-decoration: underline; }"
-    + ".purchase-card { height: 85px; padding: 0; display: flex; flex-direction: row; gap: 0; width: 290px; }"
-    + ".course-img-wrapper { flex: 0 0 85px; height: 100%; position: relative; overflow: hidden; background: #f8f9fa; display: flex; align-items: center; justify-content: center; }"
-    + ".course-img { width: 100%; height: 100%; object-fit: cover; }"
-    + ".course-img.default-icon { object-fit: contain; padding: 12px; }"
-    + ".p-content { flex-grow: 1; padding: 8px 12px; display: flex; flex-direction: column; justify-content: center; text-align: right; }"
-    + ".fomo-header { display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-bottom: 2px; }"
-    + ".fomo-name { font-weight: 700; color: #1e293b; }"
-    + ".fomo-body { font-size: 12px; color: #334155; line-height: 1.2; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }"
-    + ".product-highlight { font-weight: 600; color: " + THEME_COLOR + "; }"
-    + ".fomo-footer-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #ef4444; font-weight: 600; }"
-    + ".pulsing-dot { width: 5px; height: 5px; background-color: #ef4444; border-radius: 50%; display:inline-block; }"
-    + "@media (max-width:480px){"
-    + "  .wrap { right:0!important; left:0!important; width:100%!important; padding: 0!important; display:flex!important; justify-content:center!important; }"
-    + "  .card { width: 95%!important; margin: 0 auto 10px!important; border-radius: 12px; }"
-    + "}";
-
-  root.appendChild(style);
-
-  var wrap = document.createElement("div");
-  wrap.className = "wrap";
-  root.appendChild(wrap);
-
-  /* ---- helpers ---- */
-  function firstLetter(s) {
-    s = (s || "").trim();
-    return (s[0] || "?").toUpperCase();
-  }
-
   function escapeHTML(s) {
-    return String(s || "").replace(/[&<>"']/g, function (c) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
 
   function firstName(s) {
     s = String(s || "").trim();
-    var parts = s.split(/\s+/);
+    const parts = s.split(/\s+/);
     return parts[0] || s;
   }
 
   function normalizeSpaces(text) {
-    return (text || "").replace(/\s+/g, " ").trim();
+    return String(text || "").replace(/\s+/g, " ").trim();
   }
 
   function timeAgo(ts) {
     try {
-      var d = new Date(ts);
-      var diff = Math.max(0, (Date.now() - d.getTime()) / 1000);
-      var m = Math.floor(diff / 60),
+      const d = new Date(ts);
+      const diff = Math.max(0, (Date.now() - d.getTime()) / 1000);
+      const m = Math.floor(diff / 60),
         h = Math.floor(m / 60),
         d2 = Math.floor(h / 24);
       if (d2 > 0) return d2 === 1 ? "אתמול" : "לפני " + d2 + " ימים";
@@ -329,84 +209,105 @@ const db = getFirestore(app);
     }
   }
 
+  // ===== Fonts =====
+  function ensureFontInHead() {
+    try {
+      const id = "evid-font-" + SELECTED_FONT.toLowerCase().replace(/\s+/g, "-");
+      if (!document.getElementById(id)) {
+        const link = document.createElement("link");
+        link.id = id;
+        link.rel = "stylesheet";
+        link.href =
+          "https://fonts.googleapis.com/css2?family=" +
+          encodeURIComponent(SELECTED_FONT).replace(/%20/g, "+") +
+          ":wght@300;400;500;600;700;800&display=swap";
+        document.head.appendChild(link);
+      }
+    } catch (_) {}
+    return Promise.resolve();
+  }
+
+  // ===== Styles =====
+  const style = document.createElement("style");
+  style.textContent =
+    ""
+      + ":host{all:initial;}"
+      + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
+      + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
+      + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";}"
+      + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
+      + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
+      + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
+      + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
+      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(241,245,249,.5);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
+      + ".card:hover .xbtn{opacity:1;}"
+      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
+      + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
+      + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
+      + "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}70%{box-shadow:0 0 0 4px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}"
+      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}"
+      + ".user-pill{display:flex;align-items:center;gap:8px;}"
+      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," + THEME_COLOR + " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
+      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}"
+      + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
+      + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
+      + ".g-icon-svg{width:12px;height:12px;display:block;}"
+      + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
+      + ".review-text.expanded{-webkit-line-clamp:unset;overflow:visible;}"
+      + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:2px 0 0 0;outline:none!important;margin-top:2px;}"
+      + ".read-more-btn:hover{text-decoration:underline;}"
+      + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
+      + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
+      + ".course-img{width:100%;height:100%;object-fit:cover;}"
+      + ".course-img.default-icon{object-fit:contain;padding:12px;}"
+      + ".p-content{flex-grow:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;text-align:right;}"
+      + ".fomo-header{display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-bottom:2px;}"
+      + ".fomo-name{font-weight:700;color:#1e293b;}"
+      + ".fomo-body{font-size:12px;color:#334155;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
+      + ".product-highlight{font-weight:600;color:" + THEME_COLOR + ";}"
+      + ".fomo-footer-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#ef4444;font-weight:600;}"
+      + ".pulsing-dot{width:5px;height:5px;background:#ef4444;border-radius:50%;display:inline-block;}"
+      + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;border-radius:12px}}";
+  root.appendChild(style);
+
+  const wrap = document.createElement("div");
+  wrap.className = "wrap";
+  root.appendChild(wrap);
+
   function renderMonogram(name) {
-    var d = document.createElement("div");
+    const d = document.createElement("div");
     d.className = "avatar-fallback";
-    d.textContent = firstLetter(name);
+    const s = String(name || "").trim();
+    d.textContent = (s[0] || "?").toUpperCase();
     return d;
   }
 
   function renderAvatarPreloaded(name, url) {
-    var shell = renderMonogram(name);
+    const shell = renderMonogram(name);
     if (url) {
-      var img = new Image();
+      const img = new Image();
       img.decoding = "async";
       img.loading = "eager";
       img.onload = function () {
-        var tag = document.createElement("img");
+        const tag = document.createElement("img");
         tag.className = "review-avatar";
         tag.alt = "";
         tag.src = url;
         shell.replaceWith(tag);
       };
+      img.onerror = function () {};
       img.src = url;
     }
     return shell;
   }
 
-  var IMG_CACHE = new Map();
-  function warmImage(url) {
-    if (!url) return Promise.resolve();
-    if (IMG_CACHE.has(url)) return IMG_CACHE.get(url);
-    var pr = new Promise(function (resolve) {
-      var im = new Image();
-      im.onload = function () {
-        resolve(url);
-      };
-      im.onerror = function () {
-        resolve(url);
-      };
-      im.src = url;
-    });
-    IMG_CACHE.set(url, pr);
-    return pr;
-  }
+  // ===== Fetch helpers =====
+  const JS_MIRRORS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
 
-  function warmForItem(itm) {
-    if (!itm) return Promise.resolve();
-    if (itm.kind === "review") return warmImage(itm.data && itm.data.profilePhotoUrl);
-    if (itm.kind === "purchase") return warmImage(itm.data && itm.data.image);
-    return Promise.resolve();
-  }
-
-  /* ---- SUBMIT REVIEW ---- */
-  async function submitReview(name, rating, text) {
-    try {
-      await fetch("https://review-widget-psi.vercel.app/api/save-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name,
-          rating: rating,
-          text: text,
-          slug: CURRENT_SLUG || ""
-        })
-      });
-    } catch (e) {
-      console.error("submitReview failed:", e);
-    }
-  }
-
-  if (typeof window !== "undefined") {
-    window.EvidSubmitReview = submitReview;
-  }
-
-  /* fetchers */
-  var JS_MIRRORS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
   function rewriteToMirror(u, mirror) {
     try {
-      var a = new URL(u),
-        m = new URL(mirror);
+      const a = new URL(u);
+      const m = new URL(mirror);
       a.protocol = m.protocol;
       a.host = m.host;
       return a.toString();
@@ -416,23 +317,23 @@ const db = getFirestore(app);
   }
 
   function fetchTextWithMirrors(u) {
-    var opts = { method: "GET", credentials: "omit", cache: "no-store" };
-    var i = 0,
-      isJSD = /(^https?:)?\/\/([^\/]*jsdelivr\.net)/i.test(u);
-    var urlWithBuster = u + (u.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now();
+    const opts = { method: "GET", credentials: "omit", cache: "no-store" };
+    let i = 0;
+    const isJSD = /(^https?:)?\/\/([^\/]*jsdelivr\.net)/i.test(u);
+    const urlWithBuster = u + (u.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now();
 
     function attempt(url) {
       return fetch(url, opts)
-        .then(function (res) {
-          return res.text().then(function (raw) {
-            if (!res.ok) throw new Error(raw || "HTTP " + res.status);
+        .then((res) =>
+          res.text().then((raw) => {
+            if (!res.ok) throw new Error(raw || ("HTTP " + res.status));
             return raw;
-          });
-        })
-        .catch(function (err) {
+          })
+        )
+        .catch((err) => {
           if (isJSD && i < JS_MIRRORS.length - 1) {
             i++;
-            var next = rewriteToMirror(u, JS_MIRRORS[i]);
+            const next = rewriteToMirror(u, JS_MIRRORS[i]);
             return attempt(next + (next.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now());
           }
           throw err;
@@ -443,7 +344,7 @@ const db = getFirestore(app);
   }
 
   function fetchJSON(url) {
-    return fetchTextWithMirrors(url).then(function (raw) {
+    return fetchTextWithMirrors(url).then((raw) => {
       try {
         return JSON.parse(raw);
       } catch (_) {
@@ -452,9 +353,9 @@ const db = getFirestore(app);
     });
   }
 
-  // ---- NORMALIZE ARRAY ----
+  // ===== Normalize =====
   function normalizeArray(data, as) {
-    var arr = [];
+    let arr = [];
 
     if (Array.isArray(data)) {
       arr = data;
@@ -466,17 +367,19 @@ const db = getFirestore(app);
 
     if (as === "review") {
       return arr
-        .map(function (x) {
+        .map((x) => {
           if (!x) return null;
-          var txt = (x.text || "").toString();
+          const txt = String(x.text || "").trim();
+          if (!txt) return null;
           if (txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
 
           return {
             kind: "review",
             data: {
-              authorName: x.name || "Anonymous",
-              rating: typeof x.rating !== "undefined" ? Number(x.rating) : 5,
-              text: txt
+              authorName: x.name || x.authorName || x.author_name || "Anonymous",
+              rating: typeof x.rating !== "undefined" ? x.rating : 5,
+              text: escapeHTML(txt),
+              profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
             }
           };
         })
@@ -485,10 +388,10 @@ const db = getFirestore(app);
 
     if (as === "purchase") {
       return arr
-        .map(function (x) {
+        .map((x) => {
           if (!x) return null;
-          var txt = x.Content || x.text || "";
-          if (txt && (txt.includes("אנא ספק לי") || txt.includes("כמובן!"))) return null;
+          const txt = x.Content || x.text || "";
+          if (txt && (String(txt).includes("אנא ספק לי") || String(txt).includes("כמובן!"))) return null;
 
           return {
             kind: "purchase",
@@ -506,17 +409,66 @@ const db = getFirestore(app);
     return [];
   }
 
-  /* persistence */
-  var itemsSig = "0_0";
+  // ===== Reviews fetching: endpoint first, fallback to Firestore =====
+  async function fetchReviewsViaEndpoint(url) {
+    const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+    if (!res.ok) throw new Error("Endpoint HTTP " + res.status);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("text/html")) throw new Error("Endpoint returned HTML (likely 404 page)");
+    const data = await res.json();
+    return normalizeArray(data, "review");
+  }
+
+  async function fetchReviewsViaFirestore(slug) {
+    if (!slug) return [];
+    try {
+      const colRef = collection(db, "reviews");
+
+      // try: where + orderBy(createdAt desc) + limit
+      try {
+        const q1 = query(colRef, where("slug", "==", slug), orderBy("createdAt", "desc"), limit(25));
+        const snap1 = await getDocs(q1);
+        const raw1 = snap1.docs.map((d) => d.data());
+        return normalizeArray(raw1, "review");
+      } catch (e1) {
+        // fallback: where only + limit (no orderBy)
+        const q2 = query(colRef, where("slug", "==", slug), limit(25));
+        const snap2 = await getDocs(q2);
+        const raw2 = snap2.docs.map((d) => d.data());
+        return normalizeArray(raw2, "review");
+      }
+    } catch (e) {
+      console.warn("EVID: Firestore reviews fallback failed:", e);
+      return [];
+    }
+  }
+
+  // ===== Persistence =====
+  let items = [];
+  let idx = 0;
+  let loop = null;
+  let preTimer = null;
+
+  let isDismissed = false;
+  let currentCard = null;
+  let fadeTimeout = null;
+  let removeTimeout = null;
+
+  let isPausedForReadMore = false;
+  let currentShowDuration = 0;
+  let currentShowStart = 0;
+  let remainingShowMs = 0;
+
   function itemsSignature(arr) {
     return arr.length + "_" + (arr[0] ? arr[0].kind : "x");
   }
+  let itemsSig = "0_x";
 
   function saveState(idxShown, sig, opt) {
     try {
-      var st = { idx: idxShown, shownAt: opt && opt.shownAt ? opt.shownAt : Date.now(), sig: sig };
-      if (opt && opt.manualClose) st.manualClose = true;
-      if (opt && opt.snoozeUntil) st.snoozeUntil = Number(opt.snoozeUntil) || 0;
+      const st = { idx: idxShown, shownAt: opt?.shownAt ? opt.shownAt : Date.now(), sig };
+      if (opt?.manualClose) st.manualClose = true;
+      if (opt?.snoozeUntil) st.snoozeUntil = Number(opt.snoozeUntil) || 0;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(st));
     } catch (_) {}
   }
@@ -530,8 +482,8 @@ const db = getFirestore(app);
   }
 
   function interleave(reviews, purchases) {
-    var out = [],
-      i = 0,
+    const out = [];
+    let i = 0,
       j = 0;
     while (i < reviews.length || j < purchases.length) {
       if (i < reviews.length) out.push(reviews[i++]);
@@ -539,20 +491,6 @@ const db = getFirestore(app);
     }
     return out;
   }
-
-  /* rotation */
-  var items = [],
-    idx = 0,
-    loop = null,
-    preTimer = null;
-  var isDismissed = false;
-  var currentCard = null;
-  var fadeTimeout = null;
-  var removeTimeout = null;
-  var isPausedForReadMore = false;
-  var currentShowDuration = 0;
-  var currentShowStart = 0;
-  var remainingShowMs = 0;
 
   function clearShowTimers() {
     if (fadeTimeout) {
@@ -568,16 +506,17 @@ const db = getFirestore(app);
   function scheduleHide(showFor) {
     clearShowTimers();
     if (!currentCard) return;
+
     currentShowDuration = showFor;
     currentShowStart = Date.now();
 
-    fadeTimeout = setTimeout(function () {
+    fadeTimeout = setTimeout(() => {
       if (!currentCard) return;
       currentCard.classList.remove("enter");
       currentCard.classList.add("leave");
     }, showFor);
 
-    removeTimeout = setTimeout(function () {
+    removeTimeout = setTimeout(() => {
       if (currentCard && currentCard.parentNode) currentCard.parentNode.removeChild(currentCard);
       currentCard = null;
     }, showFor + 700);
@@ -588,7 +527,7 @@ const db = getFirestore(app);
     isPausedForReadMore = true;
     if (loop) clearInterval(loop);
     if (preTimer) clearTimeout(preTimer);
-    var elapsed = Date.now() - currentShowStart;
+    const elapsed = Date.now() - currentShowStart;
     remainingShowMs = Math.max(0, currentShowDuration - elapsed);
     clearShowTimers();
   }
@@ -596,83 +535,86 @@ const db = getFirestore(app);
   function resumeFromReadMore() {
     if (!isPausedForReadMore || !currentCard) return;
     isPausedForReadMore = false;
-    var showMs = Math.max(2000, remainingShowMs);
+    const showMs = Math.max(2000, remainingShowMs);
     scheduleHide(showMs);
-    preTimer = setTimeout(function () {
-      startFrom(0);
-    }, showMs + GAP_MS);
+    preTimer = setTimeout(() => startFrom(0), showMs + GAP_MS);
   }
 
-  function starsFor(r) {
-    var n = Math.max(0, Math.min(5, Math.round(Number(r) || 0)));
-    var full = "★★★★★".slice(0, n);
-    var empty = "☆☆☆☆☆".slice(0, 5 - n);
-    return full + empty;
+  function handleDismiss() {
+    isDismissed = true;
+    if (loop) clearInterval(loop);
+    if (preTimer) clearTimeout(preTimer);
+    clearShowTimers();
+    const current = (idx - 1 + items.length) % items.length;
+    saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
+  // ===== Renderers =====
   function renderReviewCard(item) {
-    var card = document.createElement("div");
+    const card = document.createElement("div");
     card.className = "card review-card enter";
 
-    var x = document.createElement("button");
+    const x = document.createElement("button");
     x.className = "xbtn";
     x.textContent = "×";
     x.onclick = function () {
       handleDismiss();
-      card.remove();
+      try {
+        card.remove();
+      } catch (_) {}
     };
     card.appendChild(x);
 
-    var topBadge = document.createElement("div");
+    const topBadge = document.createElement("div");
     topBadge.className = "top-badge-container";
     topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
     card.appendChild(topBadge);
 
-    var header = document.createElement("div");
+    const header = document.createElement("div");
     header.className = "review-header";
 
-    var userPill = document.createElement("div");
+    const userPill = document.createElement("div");
     userPill.className = "user-pill";
     userPill.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
 
-    var name = document.createElement("span");
-    name.className = "reviewer-name";
-    name.textContent = item.authorName;
-    userPill.appendChild(name);
+    const nm = document.createElement("span");
+    nm.className = "reviewer-name";
+    nm.textContent = item.authorName || "Anonymous";
+    userPill.appendChild(nm);
 
     header.appendChild(userPill);
 
-    var ratingDiv = document.createElement("div");
+    const ratingDiv = document.createElement("div");
     ratingDiv.className = "rating-container";
-    ratingDiv.innerHTML =
-      `
+    ratingDiv.innerHTML = `
       <svg class="g-icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05"/>
         <path d="M12 4.61c1.61 0 3.09.56 4.23 1.64l3.18-3.18C17.45 1.19 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
       </svg>
-      <div class="stars">` + starsFor(item.rating) + `</div>
+      <div class="stars">★★★★★</div>
     `;
     header.appendChild(ratingDiv);
+
     card.appendChild(header);
 
-    var body = document.createElement("div");
+    const body = document.createElement("div");
     body.className = "review-text";
-    body.textContent = item.text || "";
+    body.innerHTML = item.text || "";
 
-    var readMoreBtn = document.createElement("button");
+    const readMoreBtn = document.createElement("button");
     readMoreBtn.className = "read-more-btn";
     readMoreBtn.textContent = "קרא עוד...";
     readMoreBtn.style.display = "none";
 
-    setTimeout(function () {
+    setTimeout(() => {
       if (body.scrollHeight > body.clientHeight + 1) readMoreBtn.style.display = "block";
     }, 0);
 
     readMoreBtn.onclick = function (e) {
       e.stopPropagation();
-      var isExpanded = body.classList.toggle("expanded");
+      const isExpanded = body.classList.toggle("expanded");
       readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
       if (isExpanded) pauseForReadMore();
       else resumeFromReadMore();
@@ -685,57 +627,50 @@ const db = getFirestore(app);
   }
 
   function renderPurchaseCard(p) {
-    var card = document.createElement("div");
+    const card = document.createElement("div");
     card.className = "card purchase-card enter";
 
-    var x = document.createElement("button");
+    const x = document.createElement("button");
     x.className = "xbtn";
     x.textContent = "×";
     x.onclick = function () {
       handleDismiss();
-      card.remove();
+      try {
+        card.remove();
+      } catch (_) {}
     };
     card.appendChild(x);
 
-    var imgWrap = document.createElement("div");
+    const imgWrap = document.createElement("div");
     imgWrap.className = "course-img-wrapper";
 
-    var img = document.createElement("img");
-    var isRealImage = p.image && p.image.length > 5;
-    var imageSource = isRealImage ? p.image : DEFAULT_PRODUCT_IMG;
+    const img = document.createElement("img");
+    const isRealImage = p.image && p.image.length > 5;
+    const imageSource = isRealImage ? p.image : DEFAULT_PRODUCT_IMG;
     img.className = isRealImage ? "course-img real-photo" : "course-img default-icon";
     img.src = imageSource;
-    img.onerror = function () {
-      this.style.display = "none";
-      var fb = document.createElement("div");
-      fb.className = "pimg-fallback";
-      fb.textContent = "✓";
-      imgWrap.appendChild(fb);
-    };
     imgWrap.appendChild(img);
 
-    var content = document.createElement("div");
+    const content = document.createElement("div");
     content.className = "p-content";
 
-    var header = document.createElement("div");
+    const header = document.createElement("div");
     header.className = "fomo-header";
     header.innerHTML =
       '<span class="fomo-name">' +
       escapeHTML(firstName(p.buyer)) +
-      "</span>" +
-      '<span class="fomo-time">' +
+      '</span><span class="fomo-time">' +
       escapeHTML(timeAgo(p.purchased_at)) +
       "</span>";
 
-    var body = document.createElement("div");
+    const body = document.createElement("div");
     body.className = "fomo-body";
-    var dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
+    const dynamicVerb = getGenderedVerb(p.buyer, TXT_BOUGHT);
     body.innerHTML = escapeHTML(dynamicVerb) + ' <span class="product-highlight">' + escapeHTML(p.product) + "</span>";
 
-    var footer = document.createElement("div");
+    const footer = document.createElement("div");
     footer.className = "fomo-footer-row";
-    footer.innerHTML =
-      '<div class="live-indicator"><div class="pulsing-dot"></div> ' + escapeHTML(TXT_LIVE) + "</div>";
+    footer.innerHTML = '<span class="pulsing-dot"></span> ' + escapeHTML(TXT_LIVE);
 
     content.appendChild(header);
     content.appendChild(body);
@@ -747,55 +682,62 @@ const db = getFirestore(app);
     return card;
   }
 
+  function positionWrap() {
+    const isMobile = window.innerWidth <= 480;
+    if (isMobile) {
+      wrap.style.top = "auto";
+      wrap.style.left = "0px";
+      wrap.style.right = "0px";
+      wrap.style.bottom = "10px";
+      return;
+    }
+
+    wrap.style.top = "auto";
+    wrap.style.bottom = "auto";
+    wrap.style.left = "auto";
+    wrap.style.right = "auto";
+
+    if (String(WIDGET_POS).includes("top")) wrap.style.top = "20px";
+    else wrap.style.bottom = "20px";
+
+    if (String(WIDGET_POS).includes("left")) wrap.style.left = "20px";
+    else wrap.style.right = "20px";
+  }
+
   function showNext(overrideDuration, preserveTimestamp) {
     if (!items.length || isDismissed) return;
     clearShowTimers();
     isPausedForReadMore = false;
 
-    var itm = items[idx % items.length];
+    const itm = items[idx % items.length];
     if (!preserveTimestamp) saveState(idx % items.length, itemsSig);
     if (!preserveTimestamp) idx++;
 
-    warmForItem(itm).then(function () {
-      if (isDismissed) return;
-      var duration = overrideDuration || SHOW_MS;
-      var card = itm.kind === "purchase" ? renderPurchaseCard(itm.data) : renderReviewCard(itm.data);
+    positionWrap();
+    wrap.innerHTML = "";
 
-      var isMobile = window.innerWidth <= 480;
+    const duration = overrideDuration || SHOW_MS;
+    const card = itm.kind === "purchase" ? renderPurchaseCard(itm.data) : renderReviewCard(itm.data);
 
-      if (isMobile) {
-        wrap.style.top = "auto";
-        wrap.style.left = "0px";
-        wrap.style.right = "0px";
-        wrap.style.bottom = "10px";
-      } else {
-        wrap.style.top = "auto";
-        wrap.style.bottom = "auto";
-        wrap.style.left = "auto";
-        wrap.style.right = "auto";
-        if (WIDGET_POS.includes("top")) wrap.style.top = "20px";
-        else wrap.style.bottom = "20px";
-        if (WIDGET_POS.includes("left")) wrap.style.left = "20px";
-        else wrap.style.right = "20px";
-      }
+    wrap.appendChild(card);
+    currentCard = card;
 
-      wrap.innerHTML = "";
-      wrap.appendChild(card);
-      currentCard = card;
-      scheduleHide(duration);
-    });
+    scheduleHide(duration);
   }
 
   function startFrom(delay) {
     if (loop) clearInterval(loop);
     if (preTimer) clearTimeout(preTimer);
     if (isDismissed) return;
-    var cycle = SHOW_MS + GAP_MS;
+
+    const cycle = SHOW_MS + GAP_MS;
+
     function begin() {
       if (isDismissed) return;
       showNext();
       loop = setInterval(showNext, cycle);
     }
+
     if (delay > 0) preTimer = setTimeout(begin, delay);
     else begin();
   }
@@ -803,119 +745,109 @@ const db = getFirestore(app);
   function resumeCard(remainingTime) {
     showNext(remainingTime, true);
     idx++;
-    preTimer = setTimeout(function () {
+    preTimer = setTimeout(() => {
       showNext();
       loop = setInterval(showNext, SHOW_MS + GAP_MS);
     }, remainingTime + GAP_MS);
   }
 
-  function handleDismiss() {
-    isDismissed = true;
-    if (loop) clearInterval(loop);
-    if (preTimer) clearTimeout(preTimer);
-    clearShowTimers();
-    var current = (idx - 1 + items.length) % items.length;
-    saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
-  }
+  // ===== Load all =====
+  async function loadAll() {
+    // ---- Reviews ----
+    let reviewsItems = [];
+    let used = "none";
 
-  // ✅ בונה URL תמיד נכון (אבסולוטי + slug=widgetId)
-  function buildReviewsUrl() {
-    if (!CURRENT_SLUG) return "";
-
-    var u;
-    try {
-      // אם יש לך REVIEWS_EP שהוא יחסי או שגוי — לא משנה, אנחנו מכריחים origin+path נכון
-      u = new URL(REVIEWS_EP || "/api/get-reviews", REVIEWS_API_ORIGIN);
-    } catch (_) {
-      u = new URL("/api/get-reviews", REVIEWS_API_ORIGIN);
+    // 1) try endpoint if provided
+    if (REVIEWS_EP_ATTR) {
+      let url = REVIEWS_EP_ATTR;
+      if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
+        url += (url.indexOf("?") > -1 ? "&" : "?") + "slug=" + encodeURIComponent(CURRENT_SLUG);
+      }
+      try {
+        reviewsItems = await fetchReviewsViaEndpoint(url);
+        used = "endpoint";
+      } catch (e) {
+        console.warn("EVID: reviews endpoint failed, fallback to Firestore.", e);
+      }
     }
 
-    // תמיד נכריח את הנתיב הנכון ואת ה-origin הנכון
-    u = new URL(u.pathname + u.search, REVIEWS_API_ORIGIN);
-    u.pathname = "/api/get-reviews";
-    u.searchParams.set("slug", CURRENT_SLUG);
-    u.searchParams.set("t", String(Date.now())); // bust cache
-    return u.toString();
-  }
+    // 2) fallback to Firestore (handles your current reality where /api/get-reviews is 404)
+    if (!reviewsItems.length) {
+      reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
+      used = "firestore";
+    }
 
-  function loadAll() {
-    var reviewsUrl = buildReviewsUrl();
+    // ---- Purchases ----
+    let purchasesItems = [];
+    if (PURCHASES_EP) {
+      try {
+        const d = await fetchJSON(PURCHASES_EP);
+        purchasesItems = normalizeArray(d, "purchase");
+      } catch (_) {
+        purchasesItems = [];
+      }
+    }
 
-    var reviewsPromise = reviewsUrl
-      ? fetch(reviewsUrl, { method: "GET", credentials: "omit", cache: "no-store" })
-          .then(function (res) {
-            if (!res.ok) return [];
-            return res.json();
-          })
-          .then(function (d) {
-            return normalizeArray(d, "review");
-          })
-          .catch(function () {
-            return [];
-          })
-      : Promise.resolve([]);
-
-    var purchasesPromise = PURCHASES_EP
-      ? fetchJSON(PURCHASES_EP)
-          .then(function (d) {
-            return normalizeArray(d, "purchase");
-          })
-          .catch(function () {
-            return [];
-          })
-      : Promise.resolve([]);
-
-    Promise.all([reviewsPromise, purchasesPromise]).then(function (r) {
-      var rev = r[0] || [],
-        pur = r[1] || [];
-
-      rev = rev.filter(function (v) {
-        var t = normalizeSpaces(v.data.text);
-        return t.length > 0 && !t.includes("אנא ספק לי");
-      });
-
-      items = interleave(rev, pur);
-      itemsSig = itemsSignature(items);
-
-      if (!items.length) return;
-
-      ensureFontInHead().then(function () {
-        wrap.classList.add("ready");
-        var state = restoreState();
-        var now = Date.now();
-
-        var runLogic = function () {
-          if (state && state.sig === itemsSig) {
-            if (state.manualClose && state.snoozeUntil > now) {
-              setTimeout(function () {
-                isDismissed = false;
-                idx = state.idx + 1;
-                startFrom(0);
-              }, state.snoozeUntil - now);
-            } else if (!state.manualClose) {
-              var elapsed = now - state.shownAt;
-              if (elapsed < SHOW_MS) {
-                idx = state.idx;
-                resumeCard(Math.max(1000, SHOW_MS - elapsed));
-              } else {
-                idx = state.idx + 1;
-                startFrom(0);
-              }
-            } else {
-              startFrom(INIT_MS);
-            }
-          } else {
-            if (INIT_MS > 0) setTimeout(function () { startFrom(0); }, INIT_MS);
-            else startFrom(0);
-          }
-        };
-
-        if (state && !state.manualClose) setTimeout(runLogic, PAGE_TRANSITION_DELAY);
-        else runLogic();
-      });
+    // Filter + interleave
+    reviewsItems = (reviewsItems || []).filter((v) => {
+      const t = normalizeSpaces(v?.data?.text || "");
+      return t.length > 0 && !t.includes("אנא ספק לי");
     });
+
+    items = interleave(reviewsItems, purchasesItems);
+    itemsSig = itemsSignature(items);
+
+    console.log("EVID: loadAll done", {
+      slug: CURRENT_SLUG,
+      used,
+      reviews: reviewsItems.length,
+      purchases: purchasesItems.length,
+      total: items.length
+    });
+
+    if (!items.length) return;
+
+    await ensureFontInHead();
+
+    const state = restoreState();
+    const now = Date.now();
+
+    const runLogic = function () {
+      if (state && state.sig === itemsSig) {
+        if (state.manualClose && state.snoozeUntil > now) {
+          setTimeout(() => {
+            isDismissed = false;
+            idx = state.idx + 1;
+            startFrom(0);
+          }, state.snoozeUntil - now);
+        } else if (!state.manualClose) {
+          const elapsed = now - state.shownAt;
+          if (elapsed < SHOW_MS) {
+            idx = state.idx;
+            resumeCard(Math.max(1000, SHOW_MS - elapsed));
+          } else {
+            idx = state.idx + 1;
+            startFrom(0);
+          }
+        } else {
+          startFrom(INIT_MS);
+        }
+      } else {
+        if (INIT_MS > 0) setTimeout(() => startFrom(0), INIT_MS);
+        else startFrom(0);
+      }
+    };
+
+    if (state && !state.manualClose) setTimeout(runLogic, PAGE_TRANSITION_DELAY);
+    else runLogic();
   }
 
-  // ✅ הפעלה
-  loadAll();
+  // ===== GO =====
+  try {
+    positionWrap();
+    await loadAll();
+    window.addEventListener("resize", () => positionWrap());
+  } catch (e) {
+    console.error("EVID: fatal init error:", e);
+  }
 })();
