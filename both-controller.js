@@ -661,26 +661,30 @@ const db = getFirestore(app);
     }
 
     /* ---- init ---- */
-    function loadAll(){
-        // ---- REVIEWS ----
-        var reviewsPromise = CURRENT_SLUG
-        ? fetch("https://review-widget-psi.vercel.app/api/get-reviews?slug=" + CURRENT_SLUG, {
-            method: "GET",
-            credentials: "omit",
-            cache: "no-store"
-            })
-            .then(function(res){
-            if (!res.ok) return [];
-            return res.json();
-            })
-            .then(function(d){ return normalizeArray(d, "review"); })
-            .catch(function(){ return []; })
-        : Promise.resolve([]);
+  function loadAll(){
+  // ---- REVIEWS ----
+  var reviewsUrl =
+    REVIEWS_EP ||
+    (CURRENT_SLUG ? ("https://review-widget-psi.vercel.app/api/get-reviews?slug=" + encodeURIComponent(CURRENT_SLUG)) : "");
 
-        // ---- PURCHASES ----
-        var purchasesPromise = PURCHASES_EP
-        ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }).catch(function(){ return []; })
-        : Promise.resolve([]);
+  var reviewsPromise = reviewsUrl
+    ? fetch(reviewsUrl, {
+        method: "GET",
+        credentials: "omit",
+        cache: "no-store"
+      })
+        .then(function(res){
+          if (!res.ok) return [];
+          return res.json();
+        })
+        .then(function(d){ return normalizeArray(d, "review"); })
+        .catch(function(){ return []; })
+    : Promise.resolve([]);
+
+  // ---- PURCHASES ----
+  var purchasesPromise = PURCHASES_EP
+    ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }).catch(function(){ return []; })
+    : Promise.resolve([]);
 
         Promise.all([reviewsPromise, purchasesPromise]).then(function(r){
         var rev = r[0]||[], pur = r[1]||[];
