@@ -1,4 +1,4 @@
-/* both-controller v4.2.7 — FIX: no "Unexpected end of input" + reviews endpoint 404 fallback to Firestore */
+/* both-controller v4.2.8 — ADD: optional smart-marker highlight (<span class="smart-mark">...</span>) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -74,7 +74,8 @@ const db = getFirestore(app);
     position: "bottom-right",
     delay: 0,
     businessName: "",
-    slug: ""
+    slug: "",
+    marker: false // ✅ NEW (optional): highlight <span class="smart-mark">...</span>
   };
 
   // ===== Load widget settings from Firestore (widgets/{id}) =====
@@ -90,7 +91,8 @@ const db = getFirestore(app);
         DYNAMIC_SETTINGS.color = s.color || DYNAMIC_SETTINGS.color;
 
         const rawFont = String(s.font || DYNAMIC_SETTINGS.font);
-        DYNAMIC_SETTINGS.font = rawFont.split(",")[0].replace(/['"]/g, "").trim() || DYNAMIC_SETTINGS.font;
+        DYNAMIC_SETTINGS.font =
+          rawFont.split(",")[0].replace(/['"]/g, "").trim() || DYNAMIC_SETTINGS.font;
 
         DYNAMIC_SETTINGS.position = s.position || DYNAMIC_SETTINGS.position;
         DYNAMIC_SETTINGS.delay = Number(s.delay || 0) * 1000;
@@ -101,6 +103,9 @@ const db = getFirestore(app);
           data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
         ).trim();
 
+        // ✅ marker toggle from dashboard
+        DYNAMIC_SETTINGS.marker = !!s.marker;
+
         console.log("EVID: Widget settings loaded from Firebase", { ...DYNAMIC_SETTINGS });
       }
     }
@@ -108,21 +113,35 @@ const db = getFirestore(app);
     console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
   }
 
+  // Optional override via script attribute (handy for testing, dashboard can ignore)
+  // data-marker="on" | "off"
+  try {
+    const mk = currentScript ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim() : "";
+    if (mk === "on" || mk === "true" || mk === "1") DYNAMIC_SETTINGS.marker = true;
+    if (mk === "off" || mk === "false" || mk === "0") DYNAMIC_SETTINGS.marker = false;
+  } catch (_) {}
+
   // ===== Read config from <script> attributes (if present) =====
   const REVIEWS_EP_ATTR = currentScript ? currentScript.getAttribute("data-reviews-endpoint") : "";
   const PURCHASES_EP = currentScript ? currentScript.getAttribute("data-purchases-endpoint") : "";
 
   const SHOW_MS = Number((currentScript && currentScript.getAttribute("data-show-ms")) || 15000);
   const GAP_MS = Number((currentScript && currentScript.getAttribute("data-gap-ms")) || 6000);
-  const INIT_MS = DYNAMIC_SETTINGS.delay || Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
-  const DISMISS_COOLDOWN_MS = Number((currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000);
+  const INIT_MS =
+    DYNAMIC_SETTINGS.delay ||
+    Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
+  const DISMISS_COOLDOWN_MS = Number(
+    (currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000
+  );
 
   const TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
-  const TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
+  const TXT_BOUGHT =
+    (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
 
   const SELECTED_FONT = DYNAMIC_SETTINGS.font;
   const WIDGET_POS = DYNAMIC_SETTINGS.position;
   const THEME_COLOR = DYNAMIC_SETTINGS.color;
+  const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
 
   const DEFAULT_PRODUCT_IMG =
     (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -209,6 +228,35 @@ const db = getFirestore(app);
     }
   }
 
+  // ✅ NEW: allow only <span class="smart-mark">...</span> and strip everything else (safe)
+  function safeReviewHtmlAllowSmartMark(raw) {
+    raw = String(raw || "");
+
+    // keep only smart-mark spans as tokens
+    const tokens = [];
+    let tmp = raw.replace(
+      /<span[^>]*class=["']?smart-mark["']?[^>]*>([\s\S]*?)<\/span>/gi,
+      function (_, inner) {
+        tokens.push(inner);
+        return "__EVIDMARK_" + (tokens.length - 1) + "__";
+      }
+    );
+
+    // remove ANY other HTML tags
+    tmp = tmp.replace(/<\/?[^>]+>/g, "");
+
+    // escape the remaining text
+    tmp = escapeHTML(tmp);
+
+    // restore safe markers (also escaped inside)
+    tmp = tmp.replace(/__EVIDMARK_(\d+)__/g, function (_, i) {
+      const inner = tokens[Number(i)] || "";
+      return '<span class="smart-mark">' + escapeHTML(inner) + "</span>";
+    });
+
+    return tmp;
+  }
+
   // ===== Fonts =====
   function ensureFontInHead() {
     try {
@@ -256,6 +304,8 @@ const db = getFirestore(app);
       + ".review-text.expanded{-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:2px 0 0 0;outline:none!important;margin-top:2px;}"
       + ".read-more-btn:hover{text-decoration:underline;}"
+      // ✅ NEW: smart marker highlight
+      + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
       + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
       + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
       + ".course-img{width:100%;height:100%;object-fit:cover;}"
@@ -378,7 +428,9 @@ const db = getFirestore(app);
             data: {
               authorName: x.name || x.authorName || x.author_name || "Anonymous",
               rating: typeof x.rating !== "undefined" ? x.rating : 5,
-              text: escapeHTML(txt),
+              // ✅ IMPORTANT: keep raw text (may include <span class="smart-mark">..</span>)
+              // rendering will sanitize safely depending on MARKER_ENABLED
+              text: txt,
               profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
             }
           };
@@ -601,7 +653,11 @@ const db = getFirestore(app);
 
     const body = document.createElement("div");
     body.className = "review-text";
-    body.innerHTML = item.text || "";
+
+    // ✅ NEW: marker on/off
+    const rawText = String(item.text || "");
+    if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
+    else body.textContent = normalizeSpaces(rawText);
 
     const readMoreBtn = document.createElement("button");
     readMoreBtn.className = "read-more-btn";
@@ -771,7 +827,7 @@ const db = getFirestore(app);
       }
     }
 
-    // 2) fallback to Firestore (handles your current reality where /api/get-reviews is 404)
+    // 2) fallback to Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
@@ -800,6 +856,7 @@ const db = getFirestore(app);
     console.log("EVID: loadAll done", {
       slug: CURRENT_SLUG,
       used,
+      marker: MARKER_ENABLED,
       reviews: reviewsItems.length,
       purchases: purchasesItems.length,
       total: items.length
