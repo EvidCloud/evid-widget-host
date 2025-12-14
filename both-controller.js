@@ -1,5 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const __MODULE_URL__ = new URL(import.meta.url);
+const __WIDGET_ID__ = (__MODULE_URL__.searchParams.get("id") || "").trim();
+const __SLUG_QS__ = (__MODULE_URL__.searchParams.get("slug") || "").trim();
+
 
 /* =========================================
    1. הגדרות FIREBASE (כאן אתה מדביק את הפרטים)
@@ -32,11 +36,26 @@ const db = getFirestore(app);
 
     var root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
     
-    // זיהוי ה-ID מה-URL של הסקריפט
-    var currentScript = document.currentScript || (function() {
-        var scripts = document.getElementsByTagName('script');
-        return scripts[scripts.length - 1];
-    })();
+    function getThisScriptEl(){
+  try{
+    const me = new URL(import.meta.url, document.baseURI);
+    const meKey = me.origin + me.pathname; // בלי query
+    const scripts = Array.from(document.getElementsByTagName("script"));
+    for (let i = scripts.length - 1; i >= 0; i--){
+      const s = scripts[i];
+      if (!s.src) continue;
+      try{
+        const su = new URL(s.src, document.baseURI);
+        const suKey = su.origin + su.pathname;
+        if (suKey === meKey) return s;
+      } catch(_){}
+    }
+  } catch(_){}
+  return null;
+}
+
+var currentScript = getThisScriptEl();
+
     
     // ברירות מחדל למקרה שהסקריפט לא נטען עם ID
     let DYNAMIC_SETTINGS = {
@@ -48,34 +67,37 @@ const db = getFirestore(app);
     };
 
     // --- שליפת הנתונים מ-Firebase ---
-    try {
-        const src = currentScript.src;
-        if (src.includes('?id=')) {
-            const urlParams = new URLSearchParams(src.split('?')[1]);
-            const widgetId = urlParams.get('id');
-            
-            if (widgetId) {
-                const docRef = doc(db, "widgets", widgetId);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    const s = data.settings || {};
-                    
-                    // עדכון הגדרות מהדאטה בייס
-                    DYNAMIC_SETTINGS.color = s.color || "#4f46e5";
-                    DYNAMIC_SETTINGS.font = s.font || "Rubik";
-                    DYNAMIC_SETTINGS.position = s.position || "bottom-right";
-                    DYNAMIC_SETTINGS.delay = (s.delay || 0) * 1000;
-                    DYNAMIC_SETTINGS.businessName = data.businessName || "";
-                    
-                    console.log("EVID: Widget settings loaded from Firebase", DYNAMIC_SETTINGS);
-                }
-            }
-        }
-    } catch (e) {
-        console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
+try {
+  const widgetId = __WIDGET_ID__;
+  if (widgetId) {
+    const docRef = doc(db, "widgets", widgetId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const s = data.settings || {};
+
+      // עדכון הגדרות מהדאטה בייס
+      DYNAMIC_SETTINGS.color = s.color || "#4f46e5";
+
+      // סניטיזציה לפונט (שלא יגיע "'Segoe UI', sans-serif")
+      const rawFont = String(s.font || "Rubik");
+      DYNAMIC_SETTINGS.font = rawFont.split(",")[0].replace(/['"]/g, "").trim() || "Rubik";
+
+      DYNAMIC_SETTINGS.position = s.position || "bottom-right";
+      DYNAMIC_SETTINGS.delay = (Number(s.delay || 0)) * 1000;
+      DYNAMIC_SETTINGS.businessName = data.businessName || "";
+
+      // הכי חשוב: slug לביקורות = placeId מהמסמך (אם קיים)
+      DYNAMIC_SETTINGS.slug =
+        String(data.placeId || data.place_id || data.placeID || data.googlePlaceId || "").trim();
+
+      console.log("EVID: Widget settings loaded from Firebase", DYNAMIC_SETTINGS);
     }
+  }
+} catch (e) {
+  console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
+}
 
     /* ---- config (Overridden by Firebase if exists) ---- */
     // שימוש בהגדרות שמשכנו, או בברירות המחדל של הסקריפט הישן
@@ -107,19 +129,25 @@ const db = getFirestore(app);
 
     // ==== CURRENT SLUG (Business identifier) ====
     var CURRENT_SLUG = (function () {
-        try {
-            if (currentScript && currentScript.getAttribute("data-slug")) return currentScript.getAttribute("data-slug");
-            if (typeof window !== "undefined" && window.EVID_SLUG) return window.EVID_SLUG;
-            if (REVIEWS_EP) {
-                var url = REVIEWS_EP.split("?")[0];
-                var lastSegment = url.substring(url.lastIndexOf("/") + 1);
-                if (lastSegment.toLowerCase().endsWith(".json")) lastSegment = lastSegment.slice(0, -5);
-                return decodeURIComponent(lastSegment);
-            }
-        } catch (e) { console.warn("Failed to derive CURRENT_SLUG:", e); }
-        return "";
-    })();
+  try {
+    // 1) הכי חזק: slug שהגיע ב-query של הסקריפט
+    if (__SLUG_QS__) return __SLUG_QS__;
 
+    // 2) מה-Firebase (placeId)
+    if (DYNAMIC_SETTINGS && DYNAMIC_SETTINGS.slug) return DYNAMIC_SETTINGS.slug;
+
+    // 3) data-slug אם הצלחנו למצוא את תגית הסקריפט
+    if (currentScript && currentScript.getAttribute("data-slug")) {
+      return String(currentScript.getAttribute("data-slug")).trim();
+    }
+
+    // 4) preview setter
+    if (typeof window !== "undefined" && window.EVID_SLUG) return String(window.EVID_SLUG).trim();
+  } catch (e) {
+    console.warn("Failed to derive CURRENT_SLUG:", e);
+  }
+  return "";
+})();
     /* =========================================================
         1. HELPERS & LOGIC (Hebrew Grammar)
         ========================================================= */
@@ -663,20 +691,22 @@ const db = getFirestore(app);
     /* ---- init ---- */
   function loadAll(){
   // ---- REVIEWS ----
-  var reviewsUrl =
-    REVIEWS_EP ||
-    (CURRENT_SLUG ? ("https://review-widget-psi.vercel.app/api/get-reviews?slug=" + encodeURIComponent(CURRENT_SLUG)) : "");
+  var reviewsUrl = "";
+
+  // אם יש data-reviews-endpoint – נשתמש בו, אבל נדאג להוסיף slug אם חסר
+  if (REVIEWS_EP) {
+    reviewsUrl = REVIEWS_EP;
+    if (CURRENT_SLUG && reviewsUrl.indexOf("slug=") === -1) {
+      reviewsUrl += (reviewsUrl.indexOf("?") > -1 ? "&" : "?") + "slug=" + encodeURIComponent(CURRENT_SLUG);
+    }
+  } else if (CURRENT_SLUG) {
+    // ברירת מחדל ABSOLUTE (לא יחסי)
+    reviewsUrl = "https://review-widget-psi.vercel.app/api/get-reviews?slug=" + encodeURIComponent(CURRENT_SLUG);
+  }
 
   var reviewsPromise = reviewsUrl
-    ? fetch(reviewsUrl, {
-        method: "GET",
-        credentials: "omit",
-        cache: "no-store"
-      })
-        .then(function(res){
-          if (!res.ok) return [];
-          return res.json();
-        })
+    ? fetch(reviewsUrl, { method:"GET", credentials:"omit", cache:"no-store" })
+        .then(function(res){ if (!res.ok) return []; return res.json(); })
         .then(function(d){ return normalizeArray(d, "review"); })
         .catch(function(){ return []; })
     : Promise.resolve([]);
@@ -686,40 +716,42 @@ const db = getFirestore(app);
     ? fetchJSON(PURCHASES_EP).then(function(d){ return normalizeArray(d,"purchase"); }).catch(function(){ return []; })
     : Promise.resolve([]);
 
-        Promise.all([reviewsPromise, purchasesPromise]).then(function(r){
-        var rev = r[0]||[], pur = r[1]||[];
-        rev = rev.filter(function(v){ 
-            var t = normalizeSpaces(v.data.text);
-            return t.length > 0 && !t.includes("אנא ספק לי"); 
-        });
-        items = interleave(rev, pur);
-        itemsSig = itemsSignature(items);
+  Promise.all([reviewsPromise, purchasesPromise]).then(function(r){
+    var rev = r[0] || [], pur = r[1] || [];
+    rev = rev.filter(function(v){
+      var t = normalizeSpaces(v.data.text);
+      return t.length > 0 && !t.includes("אנא ספק לי");
+    });
 
-        if(!items.length) {
-            items = []; 
-            if(!items.length) return;
+    items = interleave(rev, pur);
+    itemsSig = itemsSignature(items);
+
+    if(!items.length) return;
+
+    ensureFontInHead().then(function(){
+      wrap.classList.add('ready');
+      var state = restoreState();
+      var now = Date.now();
+
+      var runLogic = function() {
+        if (state && state.sig === itemsSig) {
+          if (state.manualClose && state.snoozeUntil > now) {
+            setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
+          } else if (!state.manualClose) {
+            var elapsed = now - state.shownAt;
+            if (elapsed < SHOW_MS) { idx = state.idx; resumeCard(Math.max(1000, SHOW_MS - elapsed)); }
+            else { idx = state.idx + 1; startFrom(0); }
+          } else {
+            startFrom(INIT_MS);
+          }
+        } else {
+          if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS);
+          else startFrom(0);
         }
+      };
 
-        ensureFontInHead().then(function(){
-            wrap.classList.add('ready');
-            var state = restoreState();
-            var now = Date.now();
-            var runLogic = function() {
-                var isDemo = (items[0] && items[0].data && items[0].data.authorName === "ישראל ישראלי");
-                if (!isDemo && state && state.sig === itemsSig) {
-                if (state.manualClose && state.snoozeUntil > now) {
-                    setTimeout(function(){ isDismissed=false; idx=state.idx+1; startFrom(0); }, state.snoozeUntil - now);
-                } else if (!state.manualClose) {
-                    var elapsed = now - state.shownAt;
-                    if (elapsed < SHOW_MS) { idx = state.idx; resumeCard(Math.max(1000, SHOW_MS - elapsed)); } 
-                    else { idx = state.idx + 1; startFrom(0); }
-                } else { startFrom(INIT_MS); }
-                } else { if (INIT_MS > 0) setTimeout(function(){ startFrom(0); }, INIT_MS); else startFrom(0); }
-            };
-            if (state && !state.manualClose) setTimeout(runLogic, PAGE_TRANSITION_DELAY); else runLogic();
-        });
-        });
-    }
-
-    loadAll();
-})();
+      if (state && !state.manualClose) setTimeout(runLogic, PAGE_TRANSITION_DELAY);
+      else runLogic();
+    });
+  });
+}
