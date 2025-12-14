@@ -1,4 +1,4 @@
-/* both-controller v4.2.8 — ADD: optional smart-marker highlight (<span class="smart-mark">...</span>) */
+/* both-controller v4.2.9 — FIX: marker follows Firestore (data-marker is fallback); safer smart-mark parsing */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -47,19 +47,29 @@ const db = getFirestore(app);
   const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
 
   function getThisScriptEl() {
-    // In ES modules document.currentScript is usually null, so we locate the <script> by src path.
+    // In ES modules document.currentScript is usually null, so locate the <script> by src path.
+    // We support both exact path match and "contains" fallback (more robust on CDNs).
     try {
       const me = new URL(import.meta.url, document.baseURI);
       const meKey = me.origin + me.pathname; // no query
       const scripts = Array.from(document.getElementsByTagName("script"));
+
+      // 1) exact origin+pathname match (best)
       for (let i = scripts.length - 1; i >= 0; i--) {
         const s = scripts[i];
-        if (!s.src) continue;
+        if (!s || !s.src) continue;
         try {
           const su = new URL(s.src, document.baseURI);
           const suKey = su.origin + su.pathname;
           if (suKey === meKey) return s;
         } catch (_) {}
+      }
+
+      // 2) fallback: contains "both-controller" in src
+      for (let i = scripts.length - 1; i >= 0; i--) {
+        const s = scripts[i];
+        if (!s || !s.src) continue;
+        if (String(s.src).indexOf("both-controller") > -1) return s;
       }
     } catch (_) {}
     return null;
@@ -67,7 +77,7 @@ const db = getFirestore(app);
 
   const currentScript = getThisScriptEl();
 
-  // Defaults (will be overridden by Firebase widget doc if exists)
+  // Defaults (overridden by Firebase widget doc if exists)
   const DYNAMIC_SETTINGS = {
     color: "#4f46e5",
     font: "Rubik",
@@ -75,8 +85,11 @@ const db = getFirestore(app);
     delay: 0,
     businessName: "",
     slug: "",
-    marker: false // ✅ NEW (optional): highlight <span class="smart-mark">...</span>
+    marker: false
   };
+
+  let markerSource = "default";
+  let markerFromFirestorePresent = false;
 
   // ===== Load widget settings from Firestore (widgets/{id}) =====
   try {
@@ -95,30 +108,69 @@ const db = getFirestore(app);
           rawFont.split(",")[0].replace(/['"]/g, "").trim() || DYNAMIC_SETTINGS.font;
 
         DYNAMIC_SETTINGS.position = s.position || DYNAMIC_SETTINGS.position;
-        DYNAMIC_SETTINGS.delay = Number(s.delay || 0) * 1000;
+
+        const d = Number(s.delay);
+        DYNAMIC_SETTINGS.delay = Number.isFinite(d) ? d * 1000 : 0;
+
         DYNAMIC_SETTINGS.businessName = data.businessName || "";
 
-        // try to derive a slug from widget doc (if you ever store placeId there)
+        // slug sources (optional)
         DYNAMIC_SETTINGS.slug = String(
           data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
         ).trim();
 
-        // ✅ marker toggle from dashboard
-        DYNAMIC_SETTINGS.marker = !!s.marker;
+        // ✅ Marker from Firestore takes priority (so dashboard changes affect live sites)
+        if (Object.prototype.hasOwnProperty.call(s, "marker")) {
+          markerFromFirestorePresent = true;
+          markerSource = "firestore";
+          DYNAMIC_SETTINGS.marker = !!s.marker;
+        }
 
-        console.log("EVID: Widget settings loaded from Firebase", { ...DYNAMIC_SETTINGS });
+        console.log("EVID: Widget settings loaded from Firebase", {
+          id: widgetId,
+          color: DYNAMIC_SETTINGS.color,
+          font: DYNAMIC_SETTINGS.font,
+          position: DYNAMIC_SETTINGS.position,
+          delayMs: DYNAMIC_SETTINGS.delay,
+          businessName: DYNAMIC_SETTINGS.businessName,
+          slug: DYNAMIC_SETTINGS.slug,
+          marker: DYNAMIC_SETTINGS.marker,
+          markerSource
+        });
       }
     }
   } catch (e) {
     console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
   }
 
-  // Optional override via script attribute (handy for testing, dashboard can ignore)
-  // data-marker="on" | "off"
+  // ✅ data-marker fallback (ONLY if Firestore didn't provide marker)
+  // Supports:
+  // data-marker="on|off|true|false|1|0"
+  // data-marker="force-on|force-off" (always overrides)
   try {
-    const mk = currentScript ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim() : "";
-    if (mk === "on" || mk === "true" || mk === "1") DYNAMIC_SETTINGS.marker = true;
-    if (mk === "off" || mk === "false" || mk === "0") DYNAMIC_SETTINGS.marker = false;
+    const mkRaw = currentScript ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim() : "";
+    const forceOn = mkRaw === "force-on";
+    const forceOff = mkRaw === "force-off";
+
+    const attrSaysOn = mkRaw === "on" || mkRaw === "true" || mkRaw === "1";
+    const attrSaysOff = mkRaw === "off" || mkRaw === "false" || mkRaw === "0";
+
+    if (forceOn) {
+      DYNAMIC_SETTINGS.marker = true;
+      markerSource = "attr(force)";
+    } else if (forceOff) {
+      DYNAMIC_SETTINGS.marker = false;
+      markerSource = "attr(force)";
+    } else if (!markerFromFirestorePresent) {
+      if (attrSaysOn) {
+        DYNAMIC_SETTINGS.marker = true;
+        markerSource = "attr(fallback)";
+      }
+      if (attrSaysOff) {
+        DYNAMIC_SETTINGS.marker = false;
+        markerSource = "attr(fallback)";
+      }
+    }
   } catch (_) {}
 
   // ===== Read config from <script> attributes (if present) =====
@@ -153,22 +205,17 @@ const db = getFirestore(app);
   // ===== CURRENT SLUG =====
   const CURRENT_SLUG = (function () {
     try {
-      // 1) querystring slug on module url
       if (__SLUG_QS__) return __SLUG_QS__;
 
-      // 2) data-slug attribute
       if (currentScript && currentScript.getAttribute("data-slug")) {
         const v = String(currentScript.getAttribute("data-slug")).trim();
         if (v) return v;
       }
 
-      // 3) firebase widget doc (if ever exists)
       if (DYNAMIC_SETTINGS && DYNAMIC_SETTINGS.slug) return String(DYNAMIC_SETTINGS.slug).trim();
 
-      // 4) preview setter
       if (typeof window !== "undefined" && window.EVID_SLUG) return String(window.EVID_SLUG).trim();
 
-      // 5) last resort: widget id
       if (__WIDGET_ID__) return __WIDGET_ID__;
     } catch (e) {
       console.warn("EVID: Failed to derive CURRENT_SLUG:", e);
@@ -202,6 +249,10 @@ const db = getFirestore(app);
     });
   }
 
+  function stripAllTags(s) {
+    return String(s || "").replace(/<\/?[^>]+>/g, "");
+  }
+
   function firstName(s) {
     s = String(s || "").trim();
     const parts = s.split(/\s+/);
@@ -228,14 +279,13 @@ const db = getFirestore(app);
     }
   }
 
-  // ✅ NEW: allow only <span class="smart-mark">...</span> and strip everything else (safe)
+  // ✅ Allow only <span class="smart-mark">...</span> (class can be among multiple classes). Strip everything else (safe).
   function safeReviewHtmlAllowSmartMark(raw) {
     raw = String(raw || "");
 
-    // keep only smart-mark spans as tokens
     const tokens = [];
     let tmp = raw.replace(
-      /<span[^>]*class=["']?smart-mark["']?[^>]*>([\s\S]*?)<\/span>/gi,
+      /<span\b[^>]*class=(?:"[^"]*?\bsmart-mark\b[^"]*"|'[^']*?\bsmart-mark\b[^']*'|[^\s>]*\bsmart-mark\b[^\s>]*)[^>]*>([\s\S]*?)<\/span>/gi,
       function (_, inner) {
         tokens.push(inner);
         return "__EVIDMARK_" + (tokens.length - 1) + "__";
@@ -245,10 +295,10 @@ const db = getFirestore(app);
     // remove ANY other HTML tags
     tmp = tmp.replace(/<\/?[^>]+>/g, "");
 
-    // escape the remaining text
+    // escape remaining text
     tmp = escapeHTML(tmp);
 
-    // restore safe markers (also escaped inside)
+    // restore safe markers (escape inside)
     tmp = tmp.replace(/__EVIDMARK_(\d+)__/g, function (_, i) {
       const inner = tokens[Number(i)] || "";
       return '<span class="smart-mark">' + escapeHTML(inner) + "</span>";
@@ -304,7 +354,7 @@ const db = getFirestore(app);
       + ".review-text.expanded{-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:2px 0 0 0;outline:none!important;margin-top:2px;}"
       + ".read-more-btn:hover{text-decoration:underline;}"
-      // ✅ NEW: smart marker highlight
+      // ✅ smart marker highlight
       + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
       + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
       + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
@@ -428,8 +478,7 @@ const db = getFirestore(app);
             data: {
               authorName: x.name || x.authorName || x.author_name || "Anonymous",
               rating: typeof x.rating !== "undefined" ? x.rating : 5,
-              // ✅ IMPORTANT: keep raw text (may include <span class="smart-mark">..</span>)
-              // rendering will sanitize safely depending on MARKER_ENABLED
+              // keep raw text (may include <span class="smart-mark">..</span>)
               text: txt,
               profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
             }
@@ -476,14 +525,12 @@ const db = getFirestore(app);
     try {
       const colRef = collection(db, "reviews");
 
-      // try: where + orderBy(createdAt desc) + limit
       try {
         const q1 = query(colRef, where("slug", "==", slug), orderBy("createdAt", "desc"), limit(25));
         const snap1 = await getDocs(q1);
         const raw1 = snap1.docs.map((d) => d.data());
         return normalizeArray(raw1, "review");
       } catch (e1) {
-        // fallback: where only + limit (no orderBy)
         const q2 = query(colRef, where("slug", "==", slug), limit(25));
         const snap2 = await getDocs(q2);
         const raw2 = snap2.docs.map((d) => d.data());
@@ -535,8 +582,7 @@ const db = getFirestore(app);
 
   function interleave(reviews, purchases) {
     const out = [];
-    let i = 0,
-      j = 0;
+    let i = 0, j = 0;
     while (i < reviews.length || j < purchases.length) {
       if (i < reviews.length) out.push(reviews[i++]);
       if (j < purchases.length) out.push(purchases[j++]);
@@ -611,9 +657,7 @@ const db = getFirestore(app);
     x.textContent = "×";
     x.onclick = function () {
       handleDismiss();
-      try {
-        card.remove();
-      } catch (_) {}
+      try { card.remove(); } catch (_) {}
     };
     card.appendChild(x);
 
@@ -654,10 +698,12 @@ const db = getFirestore(app);
     const body = document.createElement("div");
     body.className = "review-text";
 
-    // ✅ NEW: marker on/off
     const rawText = String(item.text || "");
+
+    // ✅ Marker ON: allow only smart-mark spans
+    // ✅ Marker OFF: strip tags so we never show "<span ...>" as text
     if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
-    else body.textContent = normalizeSpaces(rawText);
+    else body.textContent = normalizeSpaces(stripAllTags(rawText));
 
     const readMoreBtn = document.createElement("button");
     readMoreBtn.className = "read-more-btn";
@@ -691,9 +737,7 @@ const db = getFirestore(app);
     x.textContent = "×";
     x.onclick = function () {
       handleDismiss();
-      try {
-        card.remove();
-      } catch (_) {}
+      try { card.remove(); } catch (_) {}
     };
     card.appendChild(x);
 
@@ -813,7 +857,6 @@ const db = getFirestore(app);
     let reviewsItems = [];
     let used = "none";
 
-    // 1) try endpoint if provided
     if (REVIEWS_EP_ATTR) {
       let url = REVIEWS_EP_ATTR;
       if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
@@ -827,7 +870,6 @@ const db = getFirestore(app);
       }
     }
 
-    // 2) fallback to Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
@@ -844,9 +886,8 @@ const db = getFirestore(app);
       }
     }
 
-    // Filter + interleave
     reviewsItems = (reviewsItems || []).filter((v) => {
-      const t = normalizeSpaces(v?.data?.text || "");
+      const t = normalizeSpaces(stripAllTags(v?.data?.text || ""));
       return t.length > 0 && !t.includes("אנא ספק לי");
     });
 
@@ -857,6 +898,7 @@ const db = getFirestore(app);
       slug: CURRENT_SLUG,
       used,
       marker: MARKER_ENABLED,
+      markerSource,
       reviews: reviewsItems.length,
       purchases: purchasesItems.length,
       total: items.length
