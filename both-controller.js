@@ -1,4 +1,6 @@
-/* both-controller v4.3.4 — ADD: default reviews API fallback + stronger items signature (detect changes even if count same) + cache-bust on endpoint fetch */
+/* both-controller v4.3.5 — FIX: read visual settings from <script data-*> (color/font/position/delay/badge) + badge toggle + badge text.
+   Keeps Firestore priority if it explicitly provides the field. */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -73,20 +75,56 @@ const db = getFirestore(app);
 
   const currentScript = getThisScriptEl();
 
+  function cleanFontValue(raw) {
+    const v = String(raw || "").trim();
+    const main = v.split(",")[0].replace(/['"]/g, "").trim();
+    return main || "";
+  }
+
+  function parseBoolRaw(v) {
+    const s = String(v || "").toLowerCase().trim();
+    if (!s) return null;
+    if (s === "true" || s === "1" || s === "on" || s === "yes") return true;
+    if (s === "false" || s === "0" || s === "off" || s === "no") return false;
+    return null;
+  }
+
+  function pickAttr(...names) {
+    for (const n of names) {
+      const val = currentScript ? currentScript.getAttribute(n) : "";
+      if (val != null && String(val).trim() !== "") return String(val).trim();
+    }
+    return "";
+  }
+
   // Defaults (overridden by Firebase widget doc if exists)
   const DYNAMIC_SETTINGS = {
     color: "#4f46e5",
     font: "Rubik",
     position: "bottom-right",
-    delay: 0,
+    delay: 0, // ms
     businessName: "",
     slug: "",
     marker: false,
-    size: "large" // "large" | "compact"
+    size: "large", // "large" | "compact"
+    badge: true,
+    badgeText: "פידבק מהשטח"
   };
 
+  // Track sources
   let markerSource = "default";
+  let badgeSource = "default";
+  let sizeSource = "default";
+  let visualSource = "default";
+
   let markerFromFirestorePresent = false;
+  let badgeFromFirestorePresent = false;
+  let sizeFromFirestorePresent = false;
+  let colorFromFirestorePresent = false;
+  let fontFromFirestorePresent = false;
+  let positionFromFirestorePresent = false;
+  let delayFromFirestorePresent = false;
+  let badgeTextFromFirestorePresent = false;
 
   // ===== Load widget settings from Firestore (widgets/{id}) =====
   try {
@@ -98,34 +136,62 @@ const db = getFirestore(app);
         const data = docSnap.data() || {};
         const s = data.settings || {};
 
-        DYNAMIC_SETTINGS.color = s.color || DYNAMIC_SETTINGS.color;
+        // color
+        if (Object.prototype.hasOwnProperty.call(s, "color")) {
+          colorFromFirestorePresent = true;
+          DYNAMIC_SETTINGS.color = s.color || DYNAMIC_SETTINGS.color;
+        }
 
-        const rawFont = String(s.font || DYNAMIC_SETTINGS.font);
-        DYNAMIC_SETTINGS.font =
-          rawFont.split(",")[0].replace(/['"]/g, "").trim() || DYNAMIC_SETTINGS.font;
+        // font
+        if (Object.prototype.hasOwnProperty.call(s, "font")) {
+          fontFromFirestorePresent = true;
+          const rawFont = cleanFontValue(s.font || DYNAMIC_SETTINGS.font);
+          DYNAMIC_SETTINGS.font = rawFont || DYNAMIC_SETTINGS.font;
+        }
 
-        DYNAMIC_SETTINGS.position = s.position || DYNAMIC_SETTINGS.position;
+        // position
+        if (Object.prototype.hasOwnProperty.call(s, "position")) {
+          positionFromFirestorePresent = true;
+          DYNAMIC_SETTINGS.position = s.position || DYNAMIC_SETTINGS.position;
+        }
 
-        const d = Number(s.delay);
-        DYNAMIC_SETTINGS.delay = Number.isFinite(d) ? d * 1000 : 0;
+        // delay (seconds in Firestore)
+        if (Object.prototype.hasOwnProperty.call(s, "delay")) {
+          delayFromFirestorePresent = true;
+          const d = Number(s.delay);
+          DYNAMIC_SETTINGS.delay = Number.isFinite(d) ? d * 1000 : 0;
+        }
 
         DYNAMIC_SETTINGS.businessName = data.businessName || "";
-
         DYNAMIC_SETTINGS.slug = String(
           data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
         ).trim();
 
-        // ✅ size from Firestore (optional)
+        // size
         if (Object.prototype.hasOwnProperty.call(s, "size")) {
+          sizeFromFirestorePresent = true;
           const sz = String(s.size || "").toLowerCase().trim();
           if (sz === "compact" || sz === "large") DYNAMIC_SETTINGS.size = sz;
         }
 
-        // ✅ Marker from Firestore takes priority
+        // marker
         if (Object.prototype.hasOwnProperty.call(s, "marker")) {
           markerFromFirestorePresent = true;
           markerSource = "firestore";
           DYNAMIC_SETTINGS.marker = !!s.marker;
+        }
+
+        // badge
+        if (Object.prototype.hasOwnProperty.call(s, "badge")) {
+          badgeFromFirestorePresent = true;
+          badgeSource = "firestore";
+          DYNAMIC_SETTINGS.badge = !!s.badge;
+        }
+
+        // badgeText
+        if (Object.prototype.hasOwnProperty.call(s, "badgeText")) {
+          badgeTextFromFirestorePresent = true;
+          DYNAMIC_SETTINGS.badgeText = String(s.badgeText || DYNAMIC_SETTINGS.badgeText).trim() || DYNAMIC_SETTINGS.badgeText;
         }
 
         console.log("EVID: Widget settings loaded from Firebase", {
@@ -137,7 +203,10 @@ const db = getFirestore(app);
           businessName: DYNAMIC_SETTINGS.businessName,
           slug: DYNAMIC_SETTINGS.slug,
           marker: DYNAMIC_SETTINGS.marker,
+          badge: DYNAMIC_SETTINGS.badge,
+          badgeText: DYNAMIC_SETTINGS.badgeText,
           markerSource,
+          badgeSource,
           size: DYNAMIC_SETTINGS.size
         });
       }
@@ -145,6 +214,56 @@ const db = getFirestore(app);
   } catch (e) {
     console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
   }
+
+  // ===== Read visual overrides from <script data-*> (fallback if Firestore didn't explicitly provide the field) =====
+  try {
+    // color
+    if (!colorFromFirestorePresent) {
+      const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
+      if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
+    }
+
+    // font
+    if (!fontFromFirestorePresent) {
+      const f = cleanFontValue(pickAttr("data-font"));
+      if (f) { DYNAMIC_SETTINGS.font = f; visualSource = "attr"; }
+    }
+
+    // position
+    if (!positionFromFirestorePresent) {
+      const p = pickAttr("data-position");
+      if (p) { DYNAMIC_SETTINGS.position = p; visualSource = "attr"; }
+    }
+
+    // delay seconds (or ms)
+    if (!delayFromFirestorePresent) {
+      const ds = pickAttr("data-delay-seconds", "data-delay");
+      if (ds) {
+        const n = Number(ds);
+        if (Number.isFinite(n)) {
+          DYNAMIC_SETTINGS.delay = n > 50 ? n : n * 1000; // if someone sends ms by mistake, allow big numbers
+          visualSource = "attr";
+        }
+      }
+    }
+
+    // badge toggle
+    if (!badgeFromFirestorePresent) {
+      const bRaw = pickAttr("data-badge");
+      const b = parseBoolRaw(bRaw);
+      if (bRaw) {
+        if (bRaw.toLowerCase().trim() === "force-on") { DYNAMIC_SETTINGS.badge = true; badgeSource = "attr(force)"; }
+        else if (bRaw.toLowerCase().trim() === "force-off") { DYNAMIC_SETTINGS.badge = false; badgeSource = "attr(force)"; }
+        else if (b !== null) { DYNAMIC_SETTINGS.badge = b; badgeSource = "attr(fallback)"; }
+      }
+    }
+
+    // badge text
+    if (!badgeTextFromFirestorePresent) {
+      const bt = pickAttr("data-badge-text");
+      if (bt) DYNAMIC_SETTINGS.badgeText = bt;
+    }
+  } catch (_) {}
 
   // ✅ data-marker fallback (ONLY if Firestore didn't provide marker)
   try {
@@ -176,9 +295,9 @@ const db = getFirestore(app);
   // ✅ data-size fallback (ONLY if Firestore didn't set it)
   try {
     const szRaw = currentScript ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim() : "";
-    if (szRaw === "compact" || szRaw === "large") {
-      if (DYNAMIC_SETTINGS.size === "large" && szRaw === "compact") DYNAMIC_SETTINGS.size = "compact";
-      if (DYNAMIC_SETTINGS.size === "compact" && szRaw === "large") DYNAMIC_SETTINGS.size = "large";
+    if (!sizeFromFirestorePresent && (szRaw === "compact" || szRaw === "large")) {
+      DYNAMIC_SETTINGS.size = szRaw;
+      sizeSource = "attr";
     }
   } catch (_) {}
 
@@ -203,6 +322,8 @@ const db = getFirestore(app);
   const WIDGET_POS = DYNAMIC_SETTINGS.position;
   const THEME_COLOR = DYNAMIC_SETTINGS.color;
   const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
+  const BADGE_ENABLED = !!DYNAMIC_SETTINGS.badge;
+  const BADGE_TEXT = String(DYNAMIC_SETTINGS.badgeText || "פידבק מהשטח").trim() || "פידבק מהשטח";
   const SIZE_MODE = (String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact") ? "compact" : "large";
 
   const DEFAULT_PRODUCT_IMG =
@@ -290,7 +411,6 @@ const db = getFirestore(app);
     }
   }
 
-  // ✅ Allow only <span class="smart-mark">...</span>. Strip everything else (safe).
   function safeReviewHtmlAllowSmartMark(raw) {
     raw = String(raw || "");
     const tokens = [];
@@ -577,7 +697,6 @@ const db = getFirestore(app);
   let currentShowStart = 0;
   let remainingShowMs = 0;
 
-  // ✅ Stronger signature: detects content changes even if same length
   function itemsSignature(arr) {
     try {
       const head = (arr || []).slice(0, 3).map((it) => {
@@ -688,12 +807,11 @@ const db = getFirestore(app);
     saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
-  // ✅ smooth expand/collapse (no clipping)
   function animateCardHeight(card, toHeightPx, cb) {
     try {
       const start = card.getBoundingClientRect().height;
       card.style.height = start + "px";
-      card.offsetHeight; // force reflow
+      card.offsetHeight;
       card.style.height = toHeightPx + "px";
 
       let done = false;
@@ -750,10 +868,14 @@ const db = getFirestore(app);
     };
     card.appendChild(x);
 
-    if (SIZE_MODE !== "compact") {
+    // ✅ Badge obeys toggle + compact mode
+    if (SIZE_MODE !== "compact" && BADGE_ENABLED) {
       const topBadge = document.createElement("div");
       topBadge.className = "top-badge-container";
-      topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
+      topBadge.innerHTML =
+        '<div class="modern-badge"><div class="pulse-dot"></div> ' +
+        escapeHTML(BADGE_TEXT) +
+        "</div>";
       card.appendChild(topBadge);
     }
 
@@ -790,7 +912,6 @@ const db = getFirestore(app);
     body.className = "review-text";
 
     const rawText = String(item.text || "");
-
     if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
     else body.textContent = normalizeSpaces(stripAllTags(rawText));
 
@@ -807,7 +928,6 @@ const db = getFirestore(app);
 
     readMoreBtn.onclick = function (e) {
       e.stopPropagation();
-
       const wasExpanded = body.classList.contains("expanded");
       if (!wasExpanded) {
         body.classList.add("expanded");
@@ -956,7 +1076,6 @@ const db = getFirestore(app);
     let reviewsItems = [];
     let used = "none";
 
-    // 1) If data-reviews-endpoint exists -> try it
     if (REVIEWS_EP_ATTR) {
       let url = REVIEWS_EP_ATTR;
       if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
@@ -970,7 +1089,6 @@ const db = getFirestore(app);
       }
     }
 
-    // 2) If still empty -> try default API (snapshot style)
     if (!reviewsItems.length && CURRENT_SLUG) {
       try {
         const url = DEFAULT_REVIEWS_API_BASE + "?slug=" + encodeURIComponent(CURRENT_SLUG);
@@ -981,7 +1099,6 @@ const db = getFirestore(app);
       }
     }
 
-    // 3) If still empty -> Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
@@ -1008,9 +1125,17 @@ const db = getFirestore(app);
     console.log("EVID: loadAll done", {
       slug: CURRENT_SLUG,
       used,
+      color: THEME_COLOR,
+      font: SELECTED_FONT,
+      position: WIDGET_POS,
+      visualSource,
       marker: MARKER_ENABLED,
       markerSource,
+      badge: BADGE_ENABLED,
+      badgeText: BADGE_TEXT,
+      badgeSource,
       size: SIZE_MODE,
+      sizeSource,
       reviews: reviewsItems.length,
       purchases: purchasesItems.length,
       total: items.length
