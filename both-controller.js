@@ -1,4 +1,4 @@
-/* both-controller v4.3.2 — FIX: Read-more expands card height (no clipping), safe spacing from X, compact stays compact */
+/* both-controller v4.3.3 — FIX: read-more expands card height (no clipping) + keep top spacing tight; compact hides top badge */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -20,7 +20,7 @@ const __SLUG_QS__ = (__MODULE_URL__.searchParams.get("slug") || "").trim();
    1) FIREBASE
    ========================================= */
 const firebaseConfig = {
-  apiKey: "AIzaSyCbRxawm1ewrPGMQKo3bqUCAgFzmtSjsUU",
+  apiKey: "AIzaSyCbRxawm1ewrPGMQKo3bUCAgFzmtSjsUU",
   authDomain: "evid-mvp-e59cc.firebaseapp.com",
   projectId: "evid-mvp-e59cc",
   storageBucket: "evid-mvp-e59cc.firebasestorage.app",
@@ -49,7 +49,7 @@ const db = getFirestore(app);
   function getThisScriptEl() {
     try {
       const me = new URL(import.meta.url, document.baseURI);
-      const meKey = me.origin + me.pathname;
+      const meKey = me.origin + me.pathname; // no query
       const scripts = Array.from(document.getElementsByTagName("script"));
 
       for (let i = scripts.length - 1; i >= 0; i--) {
@@ -82,7 +82,7 @@ const db = getFirestore(app);
     businessName: "",
     slug: "",
     marker: false,
-    size: "large" // ✅ NEW: large | compact
+    size: "large" // "large" | "compact"
   };
 
   let markerSource = "default";
@@ -116,9 +116,9 @@ const db = getFirestore(app);
         ).trim();
 
         // ✅ size from Firestore (optional)
-        if (typeof s.size !== "undefined") {
-          const v = String(s.size || "").toLowerCase().trim();
-          DYNAMIC_SETTINGS.size = v === "compact" ? "compact" : "large";
+        if (Object.prototype.hasOwnProperty.call(s, "size")) {
+          const sz = String(s.size || "").toLowerCase().trim();
+          if (sz === "compact" || sz === "large") DYNAMIC_SETTINGS.size = sz;
         }
 
         // ✅ Marker from Firestore takes priority
@@ -173,11 +173,15 @@ const db = getFirestore(app);
     }
   } catch (_) {}
 
-  // ✅ data-size fallback (ONLY if Firestore didn't provide size)
+  // ✅ data-size fallback (ONLY if Firestore didn't set it)
   try {
     const szRaw = currentScript ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim() : "";
     if (szRaw === "compact" || szRaw === "large") {
-      DYNAMIC_SETTINGS.size = szRaw;
+      // if Firestore didn't explicitly set size, accept attr
+      // (we keep Firestore priority to let dashboard control live sites)
+      // If you want attr to FORCE, you can add "force-compact/force-large" later.
+      if (DYNAMIC_SETTINGS.size === "large" && szRaw === "compact") DYNAMIC_SETTINGS.size = "compact";
+      if (DYNAMIC_SETTINGS.size === "compact" && szRaw === "large") DYNAMIC_SETTINGS.size = "large";
     }
   } catch (_) {}
 
@@ -202,9 +206,7 @@ const db = getFirestore(app);
   const WIDGET_POS = DYNAMIC_SETTINGS.position;
   const THEME_COLOR = DYNAMIC_SETTINGS.color;
   const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
-  const SIZE_MODE = (String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact")
-    ? "compact"
-    : "large";
+  const SIZE_MODE = (String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact") ? "compact" : "large";
 
   const DEFAULT_PRODUCT_IMG =
     (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -224,9 +226,7 @@ const db = getFirestore(app);
       }
 
       if (DYNAMIC_SETTINGS && DYNAMIC_SETTINGS.slug) return String(DYNAMIC_SETTINGS.slug).trim();
-
       if (typeof window !== "undefined" && window.EVID_SLUG) return String(window.EVID_SLUG).trim();
-
       if (__WIDGET_ID__) return __WIDGET_ID__;
     } catch (e) {
       console.warn("EVID: Failed to derive CURRENT_SLUG:", e);
@@ -290,10 +290,9 @@ const db = getFirestore(app);
     }
   }
 
-  // ✅ Allow only <span class="smart-mark">...</span>
+  // ✅ Allow only <span class="smart-mark">...</span>. Strip everything else (safe).
   function safeReviewHtmlAllowSmartMark(raw) {
     raw = String(raw || "");
-
     const tokens = [];
     let tmp = raw.replace(
       /<span\b[^>]*class=(?:"[^"]*?\bsmart-mark\b[^"]*"|'[^']*?\bsmart-mark\b[^']*'|[^\s>]*\bsmart-mark\b[^\s>]*)[^>]*>([\s\S]*?)<\/span>/gi,
@@ -302,15 +301,12 @@ const db = getFirestore(app);
         return "__EVIDMARK_" + (tokens.length - 1) + "__";
       }
     );
-
     tmp = tmp.replace(/<\/?[^>]+>/g, "");
     tmp = escapeHTML(tmp);
-
     tmp = tmp.replace(/__EVIDMARK_(\d+)__/g, function (_, i) {
       const inner = tokens[Number(i)] || "";
       return '<span class="smart-mark">' + escapeHTML(inner) + "</span>";
     });
-
     return tmp;
   }
 
@@ -339,52 +335,34 @@ const db = getFirestore(app);
       + ":host{all:initial;}"
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
       + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
-      + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";overflow:hidden;}"
+      // ✅ keep top spacing tight (no extra top padding). Also allow height animation for read-more.
+      + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";transition:height .22s ease;}"
+      + ".card.compact{padding:14px 16px 14px 16px;}"
       + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
       + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
-
-      // ✅ Prevent X overlap with content (review cards reserve top space)
-      + ".review-card{padding-top:34px;}"
-      + ".review-card.size-compact{padding-top:28px;}"
-      + ".xbtn{position:absolute;top:10px;left:10px;width:18px;height:18px;background:rgba(241,245,249,.6);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:50;opacity:0;transition:opacity .2s;}"
+      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(241,245,249,.5);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
-
-      // ✅ Compact removes top badge area completely
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
-      + ".review-card.size-compact .top-badge-container{display:none !important;margin:0 !important;}"
-
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
       + "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}70%{box-shadow:0 0 0 4px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}"
-
-      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;}"
-      + ".user-pill{display:flex;align-items:center;gap:8px;min-width:0;}"
-      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," + THEME_COLOR + " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;flex:0 0 auto;}"
-      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;}"
-      + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;flex:0 0 auto;}"
+      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}"
+      + ".card.compact .review-header{margin-bottom:7px;}"
+      + ".user-pill{display:flex;align-items:center;gap:8px;}"
+      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," + THEME_COLOR + " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
+      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}"
+      + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
       + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
       + ".g-icon-svg{width:12px;height:12px;display:block;}"
-
-      // ✅ Collapsed clamp
+      // ✅ clamp by default; on expanded: display:block to avoid webkit-box weirdness + allow height grow
       + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
-      // ✅ Expanded: fully un-clamp, allow natural layout
-      + ".review-text.expanded{display:block !important;-webkit-line-clamp:initial !important;-webkit-box-orient:initial !important;overflow:visible !important;white-space:normal !important;}"
-
-      + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:800;cursor:pointer;background:transparent!important;border:none;padding:6px 0 0 0;outline:none!important;margin-top:6px;}"
+      + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
+      + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
       + ".read-more-btn:hover{text-decoration:underline;}"
-
-      // ✅ Expanded card behavior (no clipping): card can grow, and if too tall -> becomes scrollable
-      + ".card.expanded-card{overflow:auto !important;max-height:calc(100vh - 70px) !important;}"
-      // ✅ Ensure content has breathing room in expanded state
-      + ".card.expanded-card .review-text{margin-top:2px;}"
-      + ".card.expanded-card .read-more-btn{margin-top:10px;}"
-
-      // ✅ smart marker highlight
       + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
-
-      + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;overflow:hidden;}"
+      + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
       + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
       + ".course-img{width:100%;height:100%;object-fit:cover;}"
       + ".course-img.default-icon{object-fit:contain;padding:12px;}"
@@ -618,14 +596,8 @@ const db = getFirestore(app);
   }
 
   function clearShowTimers() {
-    if (fadeTimeout) {
-      clearTimeout(fadeTimeout);
-      fadeTimeout = null;
-    }
-    if (removeTimeout) {
-      clearTimeout(removeTimeout);
-      removeTimeout = null;
-    }
+    if (fadeTimeout) { clearTimeout(fadeTimeout); fadeTimeout = null; }
+    if (removeTimeout) { clearTimeout(removeTimeout); removeTimeout = null; }
   }
 
   function scheduleHide(showFor) {
@@ -674,26 +646,60 @@ const db = getFirestore(app);
     saveState(current, itemsSig, { manualClose: true, snoozeUntil: Date.now() + DISMISS_COOLDOWN_MS });
   }
 
-  // ✅ New: when expanded, enforce max-height safety (no cuts; scroll if extreme)
-  function applyExpandedSizing(card, expanded) {
+  // ✅ smooth expand/collapse (no clipping)
+  function animateCardHeight(card, toHeightPx, cb) {
     try {
-      if (!card) return;
-      if (!expanded) {
-        card.style.maxHeight = "";
-        card.style.overflow = "";
-        return;
-      }
-      const vh = Math.max(320, (window.innerHeight || 0));
-      const maxCard = Math.max(260, Math.min(vh - 70, 680));
-      card.style.maxHeight = maxCard + "px";
-      card.style.overflow = "auto";
+      const start = card.getBoundingClientRect().height;
+      card.style.height = start + "px";
+      // force reflow
+      card.offsetHeight; // eslint-disable-line no-unused-expressions
+      card.style.height = toHeightPx + "px";
+
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        card.removeEventListener("transitionend", onEnd);
+        card.style.height = "auto";
+        if (typeof cb === "function") cb();
+      };
+      const onEnd = (ev) => {
+        if (ev && ev.target !== card) return;
+        finish();
+      };
+      card.addEventListener("transitionend", onEnd);
+      setTimeout(finish, 260);
+    } catch (_) {
+      card.style.height = "auto";
+      if (typeof cb === "function") cb();
+    }
+  }
+
+  function expandCardToFit(card) {
+    try {
+      card.style.height = "auto";
+      // next frame so layout updates after class toggle
+      requestAnimationFrame(() => {
+        const h = Math.max(card.scrollHeight, card.getBoundingClientRect().height);
+        animateCardHeight(card, h);
+      });
+    } catch (_) {}
+  }
+
+  function collapseCardToFit(card) {
+    try {
+      card.style.height = "auto";
+      requestAnimationFrame(() => {
+        const h = Math.max(card.scrollHeight, 40);
+        animateCardHeight(card, h);
+      });
     } catch (_) {}
   }
 
   // ===== Renderers =====
   function renderReviewCard(item) {
     const card = document.createElement("div");
-    card.className = "card review-card enter " + (SIZE_MODE === "compact" ? "size-compact" : "size-large");
+    card.className = "card review-card enter" + (SIZE_MODE === "compact" ? " compact" : "");
 
     const x = document.createElement("button");
     x.className = "xbtn";
@@ -704,7 +710,7 @@ const db = getFirestore(app);
     };
     card.appendChild(x);
 
-    // ✅ Only show "פידבק מהשטח" badge in large mode
+    // ✅ Only render top badge in LARGE (avoid empty space in compact)
     if (SIZE_MODE !== "compact") {
       const topBadge = document.createElement("div");
       topBadge.className = "top-badge-container";
@@ -754,37 +760,34 @@ const db = getFirestore(app);
     readMoreBtn.textContent = "קרא עוד...";
     readMoreBtn.style.display = "none";
 
+    // show button only if actually clamped
     setTimeout(() => {
-      if (body.scrollHeight > body.clientHeight + 1) readMoreBtn.style.display = "block";
+      try {
+        if (body.scrollHeight > body.clientHeight + 1) readMoreBtn.style.display = "block";
+      } catch (_) {}
     }, 0);
 
     readMoreBtn.onclick = function (e) {
       e.stopPropagation();
 
-      const isExpanded = body.classList.toggle("expanded");
-
-      // ✅ also expand the CARD itself (no clipping)
-      card.classList.toggle("expanded-card", isExpanded);
-      applyExpandedSizing(card, isExpanded);
-
-      readMoreBtn.textContent = isExpanded ? "סגור" : "קרא עוד...";
-
-      if (isExpanded) pauseForReadMore();
-      else {
-        applyExpandedSizing(card, false);
+      const wasExpanded = body.classList.contains("expanded");
+      if (!wasExpanded) {
+        body.classList.add("expanded");
+        readMoreBtn.textContent = "סגור";
+        pauseForReadMore();
+        // ✅ expand card height to fit full text (no clipping)
+        expandCardToFit(card);
+      } else {
+        body.classList.remove("expanded");
+        readMoreBtn.textContent = "קרא עוד...";
+        // ✅ shrink card to new content height
+        collapseCardToFit(card);
         resumeFromReadMore();
       }
     };
 
     card.appendChild(body);
     card.appendChild(readMoreBtn);
-
-    // Keep expanded sizing correct on resize while expanded
-    window.addEventListener("resize", () => {
-      try {
-        if (card.classList.contains("expanded-card")) applyExpandedSizing(card, true);
-      } catch (_) {}
-    });
 
     return card;
   }
@@ -914,7 +917,6 @@ const db = getFirestore(app);
 
   // ===== Load all =====
   async function loadAll() {
-    // ---- Reviews ----
     let reviewsItems = [];
     let used = "none";
 
@@ -936,7 +938,6 @@ const db = getFirestore(app);
       used = "firestore";
     }
 
-    // ---- Purchases ----
     let purchasesItems = [];
     if (PURCHASES_EP) {
       try {
