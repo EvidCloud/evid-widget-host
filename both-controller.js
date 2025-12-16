@@ -1,4 +1,4 @@
-/* both-controller v4.3.3 — FIX: read-more expands card height (no clipping) + keep top spacing tight; compact hides top badge */
+/* both-controller v4.3.4 — ADD: default reviews API fallback + stronger items signature (detect changes even if count same) + cache-bust on endpoint fetch */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -177,9 +177,6 @@ const db = getFirestore(app);
   try {
     const szRaw = currentScript ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim() : "";
     if (szRaw === "compact" || szRaw === "large") {
-      // if Firestore didn't explicitly set size, accept attr
-      // (we keep Firestore priority to let dashboard control live sites)
-      // If you want attr to FORCE, you can add "force-compact/force-large" later.
       if (DYNAMIC_SETTINGS.size === "large" && szRaw === "compact") DYNAMIC_SETTINGS.size = "compact";
       if (DYNAMIC_SETTINGS.size === "compact" && szRaw === "large") DYNAMIC_SETTINGS.size = "large";
     }
@@ -214,6 +211,9 @@ const db = getFirestore(app);
 
   const PAGE_TRANSITION_DELAY = 3000;
   const STORAGE_KEY = "evid:widget-state:v4";
+
+  // ✅ Default reviews API (when data-reviews-endpoint is not provided)
+  const DEFAULT_REVIEWS_API_BASE = "https://review-widget-psi.vercel.app/api/get-reviews";
 
   // ===== CURRENT SLUG =====
   const CURRENT_SLUG = (function () {
@@ -335,7 +335,6 @@ const db = getFirestore(app);
       + ":host{all:initial;}"
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
       + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
-      // ✅ keep top spacing tight (no extra top padding). Also allow height animation for read-more.
       + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";transition:height .22s ease;}"
       + ".card.compact{padding:14px 16px 14px 16px;}"
       + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
@@ -356,7 +355,6 @@ const db = getFirestore(app);
       + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
       + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
       + ".g-icon-svg{width:12px;height:12px;display:block;}"
-      // ✅ clamp by default; on expanded: display:block to avoid webkit-box weirdness + allow height grow
       + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
@@ -422,6 +420,16 @@ const db = getFirestore(app);
     }
   }
 
+  function withCacheBuster(url) {
+    try {
+      const u = new URL(url, document.baseURI);
+      u.searchParams.set("t", String(Date.now()));
+      return u.toString();
+    } catch (_) {
+      return url + (url.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now();
+    }
+  }
+
   function fetchTextWithMirrors(u) {
     const opts = { method: "GET", credentials: "omit", cache: "no-store" };
     let i = 0;
@@ -479,11 +487,16 @@ const db = getFirestore(app);
           if (!txt) return null;
           if (txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
 
+          let r = (typeof x.rating !== "undefined" ? x.rating : 5);
+          r = Number(r);
+          if (!Number.isFinite(r)) r = 5;
+          r = Math.max(1, Math.min(5, r));
+
           return {
             kind: "review",
             data: {
               authorName: x.name || x.authorName || x.author_name || "Anonymous",
-              rating: typeof x.rating !== "undefined" ? x.rating : 5,
+              rating: r,
               text: txt,
               profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
             }
@@ -517,7 +530,8 @@ const db = getFirestore(app);
 
   // ===== Reviews fetching: endpoint first, fallback to Firestore =====
   async function fetchReviewsViaEndpoint(url) {
-    const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+    const safeUrl = withCacheBuster(url);
+    const res = await fetch(safeUrl, { method: "GET", credentials: "omit", cache: "no-store" });
     if (!res.ok) throw new Error("Endpoint HTTP " + res.status);
     const ct = (res.headers.get("content-type") || "").toLowerCase();
     if (ct.includes("text/html")) throw new Error("Endpoint returned HTML (likely 404 page)");
@@ -563,8 +577,36 @@ const db = getFirestore(app);
   let currentShowStart = 0;
   let remainingShowMs = 0;
 
+  // ✅ Stronger signature: detects content changes even if same length
   function itemsSignature(arr) {
-    return arr.length + "_" + (arr[0] ? arr[0].kind : "x");
+    try {
+      const head = (arr || []).slice(0, 3).map((it) => {
+        const k = it?.kind || "x";
+        const d = it?.data || {};
+        if (k === "review") {
+          return (
+            "r:" +
+            String(d.authorName || "").slice(0, 20) +
+            ":" +
+            String(d.rating || "") +
+            ":" +
+            String(d.text || "").slice(0, 40)
+          );
+        }
+        if (k === "purchase") {
+          return (
+            "p:" +
+            String(d.buyer || "").slice(0, 20) +
+            ":" +
+            String(d.product || "").slice(0, 30)
+          );
+        }
+        return "x";
+      }).join("|");
+      return String(arr.length) + "_" + String(arr[0]?.kind || "x") + "_" + head;
+    } catch (_) {
+      return (arr || []).length + "_" + (arr[0] ? arr[0].kind : "x");
+    }
   }
   let itemsSig = "0_x";
 
@@ -651,8 +693,7 @@ const db = getFirestore(app);
     try {
       const start = card.getBoundingClientRect().height;
       card.style.height = start + "px";
-      // force reflow
-      card.offsetHeight; // eslint-disable-line no-unused-expressions
+      card.offsetHeight; // force reflow
       card.style.height = toHeightPx + "px";
 
       let done = false;
@@ -678,7 +719,6 @@ const db = getFirestore(app);
   function expandCardToFit(card) {
     try {
       card.style.height = "auto";
-      // next frame so layout updates after class toggle
       requestAnimationFrame(() => {
         const h = Math.max(card.scrollHeight, card.getBoundingClientRect().height);
         animateCardHeight(card, h);
@@ -710,7 +750,6 @@ const db = getFirestore(app);
     };
     card.appendChild(x);
 
-    // ✅ Only render top badge in LARGE (avoid empty space in compact)
     if (SIZE_MODE !== "compact") {
       const topBadge = document.createElement("div");
       topBadge.className = "top-badge-container";
@@ -760,7 +799,6 @@ const db = getFirestore(app);
     readMoreBtn.textContent = "קרא עוד...";
     readMoreBtn.style.display = "none";
 
-    // show button only if actually clamped
     setTimeout(() => {
       try {
         if (body.scrollHeight > body.clientHeight + 1) readMoreBtn.style.display = "block";
@@ -775,12 +813,10 @@ const db = getFirestore(app);
         body.classList.add("expanded");
         readMoreBtn.textContent = "סגור";
         pauseForReadMore();
-        // ✅ expand card height to fit full text (no clipping)
         expandCardToFit(card);
       } else {
         body.classList.remove("expanded");
         readMoreBtn.textContent = "קרא עוד...";
-        // ✅ shrink card to new content height
         collapseCardToFit(card);
         resumeFromReadMore();
       }
@@ -920,6 +956,7 @@ const db = getFirestore(app);
     let reviewsItems = [];
     let used = "none";
 
+    // 1) If data-reviews-endpoint exists -> try it
     if (REVIEWS_EP_ATTR) {
       let url = REVIEWS_EP_ATTR;
       if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
@@ -927,12 +964,24 @@ const db = getFirestore(app);
       }
       try {
         reviewsItems = await fetchReviewsViaEndpoint(url);
-        used = "endpoint";
+        used = "endpoint(attr)";
       } catch (e) {
-        console.warn("EVID: reviews endpoint failed, fallback to Firestore.", e);
+        console.warn("EVID: reviews endpoint (attr) failed, fallback next.", e);
       }
     }
 
+    // 2) If still empty -> try default API (snapshot style)
+    if (!reviewsItems.length && CURRENT_SLUG) {
+      try {
+        const url = DEFAULT_REVIEWS_API_BASE + "?slug=" + encodeURIComponent(CURRENT_SLUG);
+        reviewsItems = await fetchReviewsViaEndpoint(url);
+        used = "endpoint(default)";
+      } catch (e) {
+        console.warn("EVID: default reviews API failed, fallback to Firestore.", e);
+      }
+    }
+
+    // 3) If still empty -> Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
