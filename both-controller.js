@@ -1,4 +1,4 @@
-/* both-controller v4.2.9 — FIX: marker follows Firestore (data-marker is fallback); safer smart-mark parsing */
+/* both-controller v4.2.9 — FIX: marker follows Firestore (data-marker is fallback); safer smart-mark parsing; default reviews API */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -48,7 +48,6 @@ const db = getFirestore(app);
 
   function getThisScriptEl() {
     // In ES modules document.currentScript is usually null, so locate the <script> by src path.
-    // We support both exact path match and "contains" fallback (more robust on CDNs).
     try {
       const me = new URL(import.meta.url, document.baseURI);
       const meKey = me.origin + me.pathname; // no query
@@ -116,7 +115,7 @@ const db = getFirestore(app);
 
         // slug sources (optional)
         DYNAMIC_SETTINGS.slug = String(
-          data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
+          data.slug || data.placeId || data.place_id || data.placeID || data.placeID || data.googlePlaceId || ""
         ).trim();
 
         // ✅ Marker from Firestore takes priority (so dashboard changes affect live sites)
@@ -201,6 +200,9 @@ const db = getFirestore(app);
 
   const PAGE_TRANSITION_DELAY = 3000;
   const STORAGE_KEY = "evid:widget-state:v4";
+
+  // ✅ Default reviews API (used when data-reviews-endpoint is missing)
+  const DEFAULT_REVIEWS_API_BASE = "https://review-widget-psi.vercel.app/api/get-reviews?slug=";
 
   // ===== CURRENT SLUG =====
   const CURRENT_SLUG = (function () {
@@ -420,6 +422,7 @@ const db = getFirestore(app);
     const opts = { method: "GET", credentials: "omit", cache: "no-store" };
     let i = 0;
     const isJSD = /(^https?:)?\/\/([^\/]*jsdelivr\.net)/i.test(u);
+
     const urlWithBuster = u + (u.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now();
 
     function attempt(url) {
@@ -510,7 +513,7 @@ const db = getFirestore(app);
     return [];
   }
 
-  // ===== Reviews fetching: endpoint first, fallback to Firestore =====
+  // ===== Reviews fetching: endpoint first, then default API, fallback to Firestore =====
   async function fetchReviewsViaEndpoint(url) {
     const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
     if (!res.ok) throw new Error("Endpoint HTTP " + res.status);
@@ -559,7 +562,23 @@ const db = getFirestore(app);
   let remainingShowMs = 0;
 
   function itemsSignature(arr) {
-    return arr.length + "_" + (arr[0] ? arr[0].kind : "x");
+    // stronger signature so "same length" updates don't look identical
+    try {
+      const head = (arr || []).slice(0, 5).map((it) => {
+        if (!it) return "x";
+        if (it.kind === "review") {
+          const t = normalizeSpaces(stripAllTags(it.data?.text || "")).slice(0, 40);
+          const a = String(it.data?.authorName || "").slice(0, 20);
+          return "r:" + a + ":" + t;
+        }
+        const p = String(it.data?.product || "").slice(0, 40);
+        const b = String(it.data?.buyer || "").slice(0, 20);
+        return "p:" + b + ":" + p;
+      }).join("|");
+      return String(arr.length) + "|" + head;
+    } catch {
+      return (arr.length || 0) + "_x";
+    }
   }
   let itemsSig = "0_x";
 
@@ -857,6 +876,7 @@ const db = getFirestore(app);
     let reviewsItems = [];
     let used = "none";
 
+    // 1) explicit endpoint attribute if provided
     if (REVIEWS_EP_ATTR) {
       let url = REVIEWS_EP_ATTR;
       if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
@@ -864,12 +884,24 @@ const db = getFirestore(app);
       }
       try {
         reviewsItems = await fetchReviewsViaEndpoint(url);
-        used = "endpoint";
+        used = "endpoint(attr)";
       } catch (e) {
-        console.warn("EVID: reviews endpoint failed, fallback to Firestore.", e);
+        console.warn("EVID: reviews endpoint(attr) failed, will try default API / fallback.", e);
       }
     }
 
+    // 2) default API if no attr or failed/empty
+    if (!reviewsItems.length && CURRENT_SLUG) {
+      const url = DEFAULT_REVIEWS_API_BASE + encodeURIComponent(CURRENT_SLUG) + "&t=" + Date.now();
+      try {
+        reviewsItems = await fetchReviewsViaEndpoint(url);
+        used = "endpoint(default)";
+      } catch (e) {
+        console.warn("EVID: default reviews API failed, fallback to Firestore.", e);
+      }
+    }
+
+    // 3) fallback: Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
