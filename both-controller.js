@@ -1,4 +1,4 @@
-/* both-controller v4.2.9 — FIX: marker follows Firestore (data-marker is fallback); safer smart-mark parsing; default reviews API */
+/* both-controller v4.3.1 — ADD: size=compact (Firestore first, data-size fallback); marker follows Firestore; safer smart-mark parsing; default reviews API */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import {
   getFirestore,
@@ -47,13 +47,11 @@ const db = getFirestore(app);
   const root = hostEl.attachShadow ? hostEl.attachShadow({ mode: "open" }) : hostEl;
 
   function getThisScriptEl() {
-    // In ES modules document.currentScript is usually null, so locate the <script> by src path.
     try {
       const me = new URL(import.meta.url, document.baseURI);
-      const meKey = me.origin + me.pathname; // no query
+      const meKey = me.origin + me.pathname;
       const scripts = Array.from(document.getElementsByTagName("script"));
 
-      // 1) exact origin+pathname match (best)
       for (let i = scripts.length - 1; i >= 0; i--) {
         const s = scripts[i];
         if (!s || !s.src) continue;
@@ -64,7 +62,6 @@ const db = getFirestore(app);
         } catch (_) {}
       }
 
-      // 2) fallback: contains "both-controller" in src
       for (let i = scripts.length - 1; i >= 0; i--) {
         const s = scripts[i];
         if (!s || !s.src) continue;
@@ -76,7 +73,7 @@ const db = getFirestore(app);
 
   const currentScript = getThisScriptEl();
 
-  // Defaults (overridden by Firebase widget doc if exists)
+  // Defaults (overridden by Firestore widget doc if exists)
   const DYNAMIC_SETTINGS = {
     color: "#4f46e5",
     font: "Rubik",
@@ -84,11 +81,17 @@ const db = getFirestore(app);
     delay: 0,
     businessName: "",
     slug: "",
-    marker: false
+    marker: false,
+    size: "large" // ✅ large | compact
   };
 
   let markerSource = "default";
   let markerFromFirestorePresent = false;
+
+  let sizeSource = "default";
+  let sizeFromFirestorePresent = false;
+
+  const SIZE_ALLOWED = ["large", "compact"];
 
   // ===== Load widget settings from Firestore (widgets/{id}) =====
   try {
@@ -113,16 +116,25 @@ const db = getFirestore(app);
 
         DYNAMIC_SETTINGS.businessName = data.businessName || "";
 
-        // slug sources (optional)
         DYNAMIC_SETTINGS.slug = String(
-          data.slug || data.placeId || data.place_id || data.placeID || data.placeID || data.googlePlaceId || ""
+          data.slug || data.placeId || data.place_id || data.placeID || data.googlePlaceId || ""
         ).trim();
 
-        // ✅ Marker from Firestore takes priority (so dashboard changes affect live sites)
+        // ✅ Marker: Firestore priority
         if (Object.prototype.hasOwnProperty.call(s, "marker")) {
           markerFromFirestorePresent = true;
           markerSource = "firestore";
           DYNAMIC_SETTINGS.marker = !!s.marker;
+        }
+
+        // ✅ Size: Firestore priority
+        if (Object.prototype.hasOwnProperty.call(s, "size")) {
+          const sz = String(s.size || "").toLowerCase().trim();
+          if (SIZE_ALLOWED.includes(sz)) {
+            sizeFromFirestorePresent = true;
+            sizeSource = "firestore";
+            DYNAMIC_SETTINGS.size = sz;
+          }
         }
 
         console.log("EVID: Widget settings loaded from Firebase", {
@@ -134,7 +146,9 @@ const db = getFirestore(app);
           businessName: DYNAMIC_SETTINGS.businessName,
           slug: DYNAMIC_SETTINGS.slug,
           marker: DYNAMIC_SETTINGS.marker,
-          markerSource
+          markerSource,
+          size: DYNAMIC_SETTINGS.size,
+          sizeSource
         });
       }
     }
@@ -142,10 +156,7 @@ const db = getFirestore(app);
     console.warn("EVID: Could not load settings from Firebase, using defaults.", e);
   }
 
-  // ✅ data-marker fallback (ONLY if Firestore didn't provide marker)
-  // Supports:
-  // data-marker="on|off|true|false|1|0"
-  // data-marker="force-on|force-off" (always overrides)
+  // ✅ data-marker fallback (only if Firestore didn't provide, unless force-on/off)
   try {
     const mkRaw = currentScript ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim() : "";
     const forceOn = mkRaw === "force-on";
@@ -172,6 +183,16 @@ const db = getFirestore(app);
     }
   } catch (_) {}
 
+  // ✅ data-size fallback (only if Firestore didn't provide)
+  // supports: data-size="compact" | "large"
+  try {
+    const szRaw = currentScript ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim() : "";
+    if (!sizeFromFirestorePresent && SIZE_ALLOWED.includes(szRaw)) {
+      DYNAMIC_SETTINGS.size = szRaw;
+      sizeSource = "attr(fallback)";
+    }
+  } catch (_) {}
+
   // ===== Read config from <script> attributes (if present) =====
   const REVIEWS_EP_ATTR = currentScript ? currentScript.getAttribute("data-reviews-endpoint") : "";
   const PURCHASES_EP = currentScript ? currentScript.getAttribute("data-purchases-endpoint") : "";
@@ -193,6 +214,7 @@ const db = getFirestore(app);
   const WIDGET_POS = DYNAMIC_SETTINGS.position;
   const THEME_COLOR = DYNAMIC_SETTINGS.color;
   const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
+  const SIZE_MODE = (DYNAMIC_SETTINGS.size || "large").toLowerCase().trim();
 
   const DEFAULT_PRODUCT_IMG =
     (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -281,7 +303,7 @@ const db = getFirestore(app);
     }
   }
 
-  // ✅ Allow only <span class="smart-mark">...</span> (class can be among multiple classes). Strip everything else (safe).
+  // ✅ allow only <span class="smart-mark">...</span>
   function safeReviewHtmlAllowSmartMark(raw) {
     raw = String(raw || "");
 
@@ -294,13 +316,9 @@ const db = getFirestore(app);
       }
     );
 
-    // remove ANY other HTML tags
     tmp = tmp.replace(/<\/?[^>]+>/g, "");
-
-    // escape remaining text
     tmp = escapeHTML(tmp);
 
-    // restore safe markers (escape inside)
     tmp = tmp.replace(/__EVIDMARK_(\d+)__/g, function (_, i) {
       const inner = tokens[Number(i)] || "";
       return '<span class="smart-mark">' + escapeHTML(inner) + "</span>";
@@ -335,6 +353,14 @@ const db = getFirestore(app);
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
       + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
       + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";}"
+      // ✅ compact look
+      + ".card.compact{width:270px;padding:12px;border-radius:16px;}"
+      + ".card.compact .top-badge-container{display:none !important;}"
+      + ".card.compact .review-header{margin-bottom:6px;}"
+      + ".card.compact .review-avatar,.card.compact .avatar-fallback{width:26px;height:26px;}"
+      + ".card.compact .reviewer-name{font-size:13px;}"
+      + ".card.compact .stars{font-size:10px;}"
+      + ".card.compact .review-text{font-size:12px;-webkit-line-clamp:2;}"
       + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
@@ -356,9 +382,9 @@ const db = getFirestore(app);
       + ".review-text.expanded{-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:2px 0 0 0;outline:none!important;margin-top:2px;}"
       + ".read-more-btn:hover{text-decoration:underline;}"
-      // ✅ smart marker highlight
       + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
       + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
+      + ".card.purchase-card.compact{width:270px;height:78px;}"
       + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
       + ".course-img{width:100%;height:100%;object-fit:cover;}"
       + ".course-img.default-icon{object-fit:contain;padding:12px;}"
@@ -403,66 +429,12 @@ const db = getFirestore(app);
     return shell;
   }
 
-  // ===== Fetch helpers =====
-  const JS_MIRRORS = ["https://cdn.jsdelivr.net", "https://fastly.jsdelivr.net", "https://gcore.jsdelivr.net"];
-
-  function rewriteToMirror(u, mirror) {
-    try {
-      const a = new URL(u);
-      const m = new URL(mirror);
-      a.protocol = m.protocol;
-      a.host = m.host;
-      return a.toString();
-    } catch (_) {
-      return u;
-    }
-  }
-
-  function fetchTextWithMirrors(u) {
-    const opts = { method: "GET", credentials: "omit", cache: "no-store" };
-    let i = 0;
-    const isJSD = /(^https?:)?\/\/([^\/]*jsdelivr\.net)/i.test(u);
-
-    const urlWithBuster = u + (u.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now();
-
-    function attempt(url) {
-      return fetch(url, opts)
-        .then((res) =>
-          res.text().then((raw) => {
-            if (!res.ok) throw new Error(raw || ("HTTP " + res.status));
-            return raw;
-          })
-        )
-        .catch((err) => {
-          if (isJSD && i < JS_MIRRORS.length - 1) {
-            i++;
-            const next = rewriteToMirror(u, JS_MIRRORS[i]);
-            return attempt(next + (next.indexOf("?") > -1 ? "&" : "?") + "t=" + Date.now());
-          }
-          throw err;
-        });
-    }
-
-    return attempt(urlWithBuster);
-  }
-
-  function fetchJSON(url) {
-    return fetchTextWithMirrors(url).then((raw) => {
-      try {
-        return JSON.parse(raw);
-      } catch (_) {
-        return { items: [] };
-      }
-    });
-  }
-
   // ===== Normalize =====
   function normalizeArray(data, as) {
     let arr = [];
 
-    if (Array.isArray(data)) {
-      arr = data;
-    } else if (data && typeof data === "object") {
+    if (Array.isArray(data)) arr = data;
+    else if (data && typeof data === "object") {
       if (Array.isArray(data.reviews)) arr = data.reviews;
       else if (Array.isArray(data.purchases)) arr = data.purchases;
       else if (Array.isArray(data.items)) arr = data.items;
@@ -481,7 +453,6 @@ const db = getFirestore(app);
             data: {
               authorName: x.name || x.authorName || x.author_name || "Anonymous",
               rating: typeof x.rating !== "undefined" ? x.rating : 5,
-              // keep raw text (may include <span class="smart-mark">..</span>)
               text: txt,
               profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
             }
@@ -513,12 +484,12 @@ const db = getFirestore(app);
     return [];
   }
 
-  // ===== Reviews fetching: endpoint first, then default API, fallback to Firestore =====
+  // ===== Reviews fetching =====
   async function fetchReviewsViaEndpoint(url) {
     const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
     if (!res.ok) throw new Error("Endpoint HTTP " + res.status);
     const ct = (res.headers.get("content-type") || "").toLowerCase();
-    if (ct.includes("text/html")) throw new Error("Endpoint returned HTML (likely 404 page)");
+    if (ct.includes("text/html")) throw new Error("Endpoint returned HTML");
     const data = await res.json();
     return normalizeArray(data, "review");
   }
@@ -527,17 +498,14 @@ const db = getFirestore(app);
     if (!slug) return [];
     try {
       const colRef = collection(db, "reviews");
-
       try {
         const q1 = query(colRef, where("slug", "==", slug), orderBy("createdAt", "desc"), limit(25));
         const snap1 = await getDocs(q1);
-        const raw1 = snap1.docs.map((d) => d.data());
-        return normalizeArray(raw1, "review");
-      } catch (e1) {
+        return normalizeArray(snap1.docs.map((d) => d.data()), "review");
+      } catch (_) {
         const q2 = query(colRef, where("slug", "==", slug), limit(25));
         const snap2 = await getDocs(q2);
-        const raw2 = snap2.docs.map((d) => d.data());
-        return normalizeArray(raw2, "review");
+        return normalizeArray(snap2.docs.map((d) => d.data()), "review");
       }
     } catch (e) {
       console.warn("EVID: Firestore reviews fallback failed:", e);
@@ -545,7 +513,7 @@ const db = getFirestore(app);
     }
   }
 
-  // ===== Persistence =====
+  // ===== Persistence / rotation =====
   let items = [];
   let idx = 0;
   let loop = null;
@@ -562,7 +530,6 @@ const db = getFirestore(app);
   let remainingShowMs = 0;
 
   function itemsSignature(arr) {
-    // stronger signature so "same length" updates don't look identical
     try {
       const head = (arr || []).slice(0, 5).map((it) => {
         if (!it) return "x";
@@ -610,14 +577,8 @@ const db = getFirestore(app);
   }
 
   function clearShowTimers() {
-    if (fadeTimeout) {
-      clearTimeout(fadeTimeout);
-      fadeTimeout = null;
-    }
-    if (removeTimeout) {
-      clearTimeout(removeTimeout);
-      removeTimeout = null;
-    }
+    if (fadeTimeout) { clearTimeout(fadeTimeout); fadeTimeout = null; }
+    if (removeTimeout) { clearTimeout(removeTimeout); removeTimeout = null; }
   }
 
   function scheduleHide(showFor) {
@@ -669,7 +630,7 @@ const db = getFirestore(app);
   // ===== Renderers =====
   function renderReviewCard(item) {
     const card = document.createElement("div");
-    card.className = "card review-card enter";
+    card.className = "card review-card enter" + (SIZE_MODE === "compact" ? " compact" : "");
 
     const x = document.createElement("button");
     x.className = "xbtn";
@@ -680,10 +641,13 @@ const db = getFirestore(app);
     };
     card.appendChild(x);
 
-    const topBadge = document.createElement("div");
-    topBadge.className = "top-badge-container";
-    topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
-    card.appendChild(topBadge);
+    // ✅ only in large
+    if (SIZE_MODE !== "compact") {
+      const topBadge = document.createElement("div");
+      topBadge.className = "top-badge-container";
+      topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> פידבק מהשטח</div>';
+      card.appendChild(topBadge);
+    }
 
     const header = document.createElement("div");
     header.className = "review-header";
@@ -718,9 +682,6 @@ const db = getFirestore(app);
     body.className = "review-text";
 
     const rawText = String(item.text || "");
-
-    // ✅ Marker ON: allow only smart-mark spans
-    // ✅ Marker OFF: strip tags so we never show "<span ...>" as text
     if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
     else body.textContent = normalizeSpaces(stripAllTags(rawText));
 
@@ -749,7 +710,7 @@ const db = getFirestore(app);
 
   function renderPurchaseCard(p) {
     const card = document.createElement("div");
-    card.className = "card purchase-card enter";
+    card.className = "card purchase-card enter" + (SIZE_MODE === "compact" ? " compact" : "");
 
     const x = document.createElement("button");
     x.className = "xbtn";
@@ -870,13 +831,11 @@ const db = getFirestore(app);
     }, remainingTime + GAP_MS);
   }
 
-  // ===== Load all =====
   async function loadAll() {
     // ---- Reviews ----
     let reviewsItems = [];
     let used = "none";
 
-    // 1) explicit endpoint attribute if provided
     if (REVIEWS_EP_ATTR) {
       let url = REVIEWS_EP_ATTR;
       if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
@@ -886,11 +845,10 @@ const db = getFirestore(app);
         reviewsItems = await fetchReviewsViaEndpoint(url);
         used = "endpoint(attr)";
       } catch (e) {
-        console.warn("EVID: reviews endpoint(attr) failed, will try default API / fallback.", e);
+        console.warn("EVID: reviews endpoint(attr) failed, trying default API / fallback.", e);
       }
     }
 
-    // 2) default API if no attr or failed/empty
     if (!reviewsItems.length && CURRENT_SLUG) {
       const url = DEFAULT_REVIEWS_API_BASE + encodeURIComponent(CURRENT_SLUG) + "&t=" + Date.now();
       try {
@@ -901,7 +859,6 @@ const db = getFirestore(app);
       }
     }
 
-    // 3) fallback: Firestore
     if (!reviewsItems.length) {
       reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
       used = "firestore";
@@ -911,7 +868,8 @@ const db = getFirestore(app);
     let purchasesItems = [];
     if (PURCHASES_EP) {
       try {
-        const d = await fetchJSON(PURCHASES_EP);
+        const res = await fetch(PURCHASES_EP, { method: "GET", credentials: "omit", cache: "no-store" });
+        const d = await res.json();
         purchasesItems = normalizeArray(d, "purchase");
       } catch (_) {
         purchasesItems = [];
@@ -931,6 +889,8 @@ const db = getFirestore(app);
       used,
       marker: MARKER_ENABLED,
       markerSource,
+      size: SIZE_MODE,
+      sizeSource,
       reviews: reviewsItems.length,
       purchases: purchasesItems.length,
       total: items.length
@@ -973,7 +933,6 @@ const db = getFirestore(app);
     else runLogic();
   }
 
-  // ===== GO =====
   try {
     positionWrap();
     await loadAll();
