@@ -1,10 +1,12 @@
-/* both-controller v4.3.6 — STABLE:
+/* both-controller v4.3.7 — STABLE + SEMANTIC PRO:
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
    - Reads widgetId from query (?id=) OR data-widget-id/data-id
    - Avoids using widgetId as slug fallback (prevents wrong API calls)
    - Safer shadowRoot reuse + duplicate mount guard
+   - NEW: Semantic (PRO-only) with data-mode: reviews | semantic | auto | hybrid
+   - NEW: Auto semantic on product pages + fallback to regular reviews
 */
 
 (function () {
@@ -39,7 +41,9 @@
       if (currentScript && currentScript.src) return new URL(currentScript.src, document.baseURI);
     } catch (_) {}
     // ultra-fallback
-    try { return new URL(location.href); } catch (_) {}
+    try {
+      return new URL(location.href);
+    } catch (_) {}
     return null;
   }
 
@@ -139,11 +143,9 @@
 
   // ---------- Dynamic imports (so no type="module" is required) ----------
   (async function boot() {
-    const {
-      initializeApp,
-      getApps,
-      getApp
-    } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js");
+    const { initializeApp, getApps, getApp } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"
+    );
 
     const {
       getFirestore,
@@ -241,18 +243,22 @@
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data() || {};
-          const s = (data.settings && typeof data.settings === "object") ? data.settings : data;
+          const s = data.settings && typeof data.settings === "object" ? data.settings : data;
 
           // color
           if (readAny(s, ["color", "primaryColor", "themeColor"]) !== undefined) {
             colorFromFirestorePresent = true;
-            DYNAMIC_SETTINGS.color = String(readAny(s, ["color", "primaryColor", "themeColor"]) || DYNAMIC_SETTINGS.color);
+            DYNAMIC_SETTINGS.color = String(
+              readAny(s, ["color", "primaryColor", "themeColor"]) || DYNAMIC_SETTINGS.color
+            );
           }
 
           // font
           if (readAny(s, ["font", "fontFamily"]) !== undefined) {
             fontFromFirestorePresent = true;
-            const rawFont = cleanFontValue(readAny(s, ["font", "fontFamily"]) || DYNAMIC_SETTINGS.font);
+            const rawFont = cleanFontValue(
+              readAny(s, ["font", "fontFamily"]) || DYNAMIC_SETTINGS.font
+            );
             DYNAMIC_SETTINGS.font = rawFont || DYNAMIC_SETTINGS.font;
           }
 
@@ -280,10 +286,12 @@
           // slug / placeId
           const slugVal = String(
             data.slug ||
-            data.placeId || data.place_id || data.placeID ||
-            data.googlePlaceId ||
-            readAny(s, ["slug", "placeId", "googlePlaceId"]) ||
-            ""
+              data.placeId ||
+              data.place_id ||
+              data.placeID ||
+              data.googlePlaceId ||
+              readAny(s, ["slug", "placeId", "googlePlaceId"]) ||
+              ""
           ).trim();
           DYNAMIC_SETTINGS.slug = slugVal;
 
@@ -341,17 +349,26 @@
     try {
       if (!colorFromFirestorePresent) {
         const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
-        if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
+        if (c) {
+          DYNAMIC_SETTINGS.color = c;
+          visualSource = "attr";
+        }
       }
 
       if (!fontFromFirestorePresent) {
         const f = cleanFontValue(pickAttr("data-font"));
-        if (f) { DYNAMIC_SETTINGS.font = f; visualSource = "attr"; }
+        if (f) {
+          DYNAMIC_SETTINGS.font = f;
+          visualSource = "attr";
+        }
       }
 
       if (!positionFromFirestorePresent) {
         const p = pickAttr("data-position");
-        if (p) { DYNAMIC_SETTINGS.position = p; visualSource = "attr"; }
+        if (p) {
+          DYNAMIC_SETTINGS.position = p;
+          visualSource = "attr";
+        }
       }
 
       if (!delayFromFirestorePresent) {
@@ -370,9 +387,16 @@
         const b = parseBoolRaw(bRaw);
         if (bRaw) {
           const low = bRaw.toLowerCase().trim();
-          if (low === "force-on") { DYNAMIC_SETTINGS.badge = true; badgeSource = "attr(force)"; }
-          else if (low === "force-off") { DYNAMIC_SETTINGS.badge = false; badgeSource = "attr(force)"; }
-          else if (b !== null) { DYNAMIC_SETTINGS.badge = b; badgeSource = "attr(fallback)"; }
+          if (low === "force-on") {
+            DYNAMIC_SETTINGS.badge = true;
+            badgeSource = "attr(force)";
+          } else if (low === "force-off") {
+            DYNAMIC_SETTINGS.badge = false;
+            badgeSource = "attr(force)";
+          } else if (b !== null) {
+            DYNAMIC_SETTINGS.badge = b;
+            badgeSource = "attr(fallback)";
+          }
         }
       }
 
@@ -384,23 +408,37 @@
 
     // marker fallback
     try {
-      const mkRaw = currentScript ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim() : "";
+      const mkRaw = currentScript
+        ? String(currentScript.getAttribute("data-marker") || "").toLowerCase().trim()
+        : "";
       const forceOn = mkRaw === "force-on";
       const forceOff = mkRaw === "force-off";
       const attrSaysOn = mkRaw === "on" || mkRaw === "true" || mkRaw === "1";
       const attrSaysOff = mkRaw === "off" || mkRaw === "false" || mkRaw === "0";
 
-      if (forceOn) { DYNAMIC_SETTINGS.marker = true; markerSource = "attr(force)"; }
-      else if (forceOff) { DYNAMIC_SETTINGS.marker = false; markerSource = "attr(force)"; }
-      else if (!markerFromFirestorePresent) {
-        if (attrSaysOn) { DYNAMIC_SETTINGS.marker = true; markerSource = "attr(fallback)"; }
-        if (attrSaysOff) { DYNAMIC_SETTINGS.marker = false; markerSource = "attr(fallback)"; }
+      if (forceOn) {
+        DYNAMIC_SETTINGS.marker = true;
+        markerSource = "attr(force)";
+      } else if (forceOff) {
+        DYNAMIC_SETTINGS.marker = false;
+        markerSource = "attr(force)";
+      } else if (!markerFromFirestorePresent) {
+        if (attrSaysOn) {
+          DYNAMIC_SETTINGS.marker = true;
+          markerSource = "attr(fallback)";
+        }
+        if (attrSaysOff) {
+          DYNAMIC_SETTINGS.marker = false;
+          markerSource = "attr(fallback)";
+        }
       }
     } catch (_) {}
 
     // size fallback
     try {
-      const szRaw = currentScript ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim() : "";
+      const szRaw = currentScript
+        ? String(currentScript.getAttribute("data-size") || "").toLowerCase().trim()
+        : "";
       if (!sizeFromFirestorePresent && (szRaw === "compact" || szRaw === "large")) {
         DYNAMIC_SETTINGS.size = szRaw;
         sizeSource = "attr";
@@ -415,11 +453,16 @@
 
     const SHOW_MS = Number((currentScript && currentScript.getAttribute("data-show-ms")) || 15000);
     const GAP_MS = Number((currentScript && currentScript.getAttribute("data-gap-ms")) || 6000);
-    const INIT_MS = DYNAMIC_SETTINGS.delay || Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
-    const DISMISS_COOLDOWN_MS = Number((currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000);
+    const INIT_MS =
+      DYNAMIC_SETTINGS.delay ||
+      Number((currentScript && currentScript.getAttribute("data-init-delay-ms")) || 0);
+    const DISMISS_COOLDOWN_MS = Number(
+      (currentScript && currentScript.getAttribute("data-dismiss-cooldown-ms")) || 45000
+    );
 
     const TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
-    const TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
+    const TXT_BOUGHT =
+      (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
 
     const SELECTED_FONT = DYNAMIC_SETTINGS.font;
     const WIDGET_POS = DYNAMIC_SETTINGS.position;
@@ -427,7 +470,8 @@
     const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
     const BADGE_ENABLED = !!DYNAMIC_SETTINGS.badge;
     const BADGE_TEXT = String(DYNAMIC_SETTINGS.badgeText || "פידבק מהשטח").trim() || "פידבק מהשטח";
-    const SIZE_MODE = (String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact") ? "compact" : "large";
+    const SIZE_MODE =
+      String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact" ? "compact" : "large";
 
     const DEFAULT_PRODUCT_IMG =
       (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -437,6 +481,22 @@
     const STORAGE_KEY = "evid:widget-state:v4";
 
     const DEFAULT_REVIEWS_API_BASE = "https://review-widget-psi.vercel.app/api/get-reviews";
+
+    // ===== SEMANTIC (PRO-only) =====
+    const MODE_ATTR_RAW = (currentScript && currentScript.getAttribute("data-mode")) || "";
+    const MODE = (String(MODE_ATTR_RAW || "auto").toLowerCase().trim() || "auto");
+    const SEMANTIC_TOP = Math.max(
+      1,
+      Math.min(10, Number((currentScript && currentScript.getAttribute("data-semantic-top")) || 5) || 5)
+    );
+    const HYBRID_SEMANTIC_TOP = Math.max(
+      1,
+      Math.min(10, Number((currentScript && currentScript.getAttribute("data-hybrid-semantic-top")) || 3) || 3)
+    );
+    const HYBRID_TOTAL = Math.max(
+      1,
+      Math.min(10, Number((currentScript && currentScript.getAttribute("data-hybrid-total")) || 5) || 5)
+    );
 
     // ===== CURRENT SLUG =====
     const CURRENT_SLUG = (function () {
@@ -499,47 +559,61 @@
        ========================================= */
     const style = document.createElement("style");
     style.textContent =
-      ""
-      + ":host{all:initial;}"
-      + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
-      + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
-      + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";transition:height .22s ease;}"
-      + ".card.compact{padding:14px 16px 14px 16px;}"
-      + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
-      + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
-      + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
-      + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
-      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(241,245,249,.5);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
-      + ".card:hover .xbtn{opacity:1;}"
-      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
-      + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
-      + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
-      + "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}70%{box-shadow:0 0 0 4px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}"
-      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}"
-      + ".card.compact .review-header{margin-bottom:7px;}"
-      + ".user-pill{display:flex;align-items:center;gap:8px;}"
-      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," + THEME_COLOR + " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
-      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}"
-      + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
-      + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
-      + ".g-icon-svg{width:12px;height:12px;display:block;}"
-      + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
-      + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
-      + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
-      + ".read-more-btn:hover{text-decoration:underline;}"
-      + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
-      + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
-      + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
-      + ".course-img{width:100%;height:100%;object-fit:cover;}"
-      + ".course-img.default-icon{object-fit:contain;padding:12px;}"
-      + ".p-content{flex-grow:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;text-align:right;}"
-      + ".fomo-header{display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-bottom:2px;}"
-      + ".fomo-name{font-weight:700;color:#1e293b;}"
-      + ".fomo-body{font-size:12px;color:#334155;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
-      + ".product-highlight{font-weight:600;color:" + THEME_COLOR + ";}"
-      + ".fomo-footer-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#ef4444;font-weight:600;}"
-      + ".pulsing-dot{width:5px;height:5px;background:#ef4444;border-radius:50%;display:inline-block;}"
-      + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;border-radius:12px}}";
+      "" +
+      ":host{all:initial;}" +
+      ":host, :host *, .wrap, .wrap *{font-family:'" +
+      SELECTED_FONT +
+      "',sans-serif !important;box-sizing:border-box;}" +
+      ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}" +
+      ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " +
+      THEME_COLOR +
+      ";transition:height .22s ease;}" +
+      ".card.compact{padding:14px 16px 14px 16px;}" +
+      ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}" +
+      ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}" +
+      "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}" +
+      "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}" +
+      ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(241,245,249,.5);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}" +
+      ".card:hover .xbtn{opacity:1;}" +
+      ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}" +
+      ".modern-badge{font-size:10px;font-weight:700;color:" +
+      THEME_COLOR +
+      ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}" +
+      ".pulse-dot{width:5px;height:5px;background:" +
+      THEME_COLOR +
+      ";border-radius:50%;animation:pulse 2s infinite;}" +
+      "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}70%{box-shadow:0 0 0 4px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}" +
+      ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}" +
+      ".card.compact .review-header{margin-bottom:7px;}" +
+      ".user-pill{display:flex;align-items:center;gap:8px;}" +
+      ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," +
+      THEME_COLOR +
+      " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}" +
+      ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}" +
+      ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}" +
+      ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}" +
+      ".g-icon-svg{width:12px;height:12px;display:block;}" +
+      ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}" +
+      ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}" +
+      ".read-more-btn{font-size:11px;color:" +
+      THEME_COLOR +
+      ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}" +
+      ".read-more-btn:hover{text-decoration:underline;}" +
+      ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}" +
+      ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}" +
+      ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}" +
+      ".course-img{width:100%;height:100%;object-fit:cover;}" +
+      ".course-img.default-icon{object-fit:contain;padding:12px;}" +
+      ".p-content{flex-grow:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;text-align:right;}" +
+      ".fomo-header{display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-bottom:2px;}" +
+      ".fomo-name{font-weight:700;color:#1e293b;}" +
+      ".fomo-body{font-size:12px;color:#334155;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}" +
+      ".product-highlight{font-weight:600;color:" +
+      THEME_COLOR +
+      ";}" +
+      ".fomo-footer-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#ef4444;font-weight:600;}" +
+      ".pulsing-dot{width:5px;height:5px;background:#ef4444;border-radius:50%;display:inline-block;}" +
+      "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;border-radius:12px}}";
     root.appendChild(style);
 
     const wrap = document.createElement("div");
@@ -629,7 +703,11 @@
 
     function fetchJSON(url) {
       return fetchTextWithMirrors(url).then((raw) => {
-        try { return JSON.parse(raw); } catch (_) { return { items: [] }; }
+        try {
+          return JSON.parse(raw);
+        } catch (_) {
+          return { items: [] };
+        }
       });
     }
 
@@ -643,6 +721,10 @@
         if (Array.isArray(data.reviews)) arr = data.reviews;
         else if (Array.isArray(data.purchases)) arr = data.purchases;
         else if (Array.isArray(data.items)) arr = data.items;
+        else if (Array.isArray(data.matches)) {
+          // semantic shape sometimes: {matches:[{review:{...}}]}
+          arr = data.matches.map((m) => (m && (m.review || m.data || m)) || null).filter(Boolean);
+        }
       }
 
       if (as === "review") {
@@ -650,22 +732,38 @@
           .map((x) => {
             if (!x) return null;
 
-            const txt = String(x.text || x.reviewText || "").trim();
+            // support multiple shapes
+            const txt = String(
+              (x.text || x.reviewText || (x.data && x.data.text) || "")
+            ).trim();
             if (!txt) return null;
             if (txt.includes("אנא ספק לי") || txt.includes("כמובן!")) return null;
 
-            let r = (typeof x.rating !== "undefined" ? x.rating : 5);
+            let r = (typeof x.rating !== "undefined" ? x.rating : (x.data && x.data.rating)) ?? 5;
             r = Number(r);
             if (!Number.isFinite(r)) r = 5;
             r = Math.max(1, Math.min(5, r));
 
+            const nm =
+              x.name ||
+              x.authorName ||
+              x.author_name ||
+              x.user ||
+              (x.data && (x.data.authorName || x.data.name)) ||
+              "Anonymous";
+
             return {
               kind: "review",
               data: {
-                authorName: x.name || x.authorName || x.author_name || x.user || "Anonymous",
+                authorName: nm,
                 rating: r,
                 text: txt,
-                profilePhotoUrl: x.profilePhotoUrl || x.photo || x.avatar || ""
+                profilePhotoUrl:
+                  x.profilePhotoUrl ||
+                  x.photo ||
+                  x.avatar ||
+                  (x.data && (x.data.profilePhotoUrl || x.data.photo || x.data.avatar)) ||
+                  ""
               }
             };
           })
@@ -730,6 +828,116 @@
       }
     }
 
+    // ===== Semantic (PRO-only) =====
+    function getApiOrigin() {
+      try {
+        const u = new URL(DEFAULT_REVIEWS_API_BASE);
+        return u.origin;
+      } catch (_) {
+        return "https://review-widget-psi.vercel.app";
+      }
+    }
+    const API_ORIGIN = getApiOrigin();
+
+    let __tenantStatusCache = null;
+    async function getTenantSemanticStatus(slug) {
+      if (!slug) return { ok: false, allowed: false, tenant: null };
+      if (__tenantStatusCache && __tenantStatusCache.slug === slug) return __tenantStatusCache;
+      try {
+        const url =
+          API_ORIGIN +
+          "/api/semantic?action=status&slug=" +
+          encodeURIComponent(slug) +
+          "&t=" +
+          Date.now();
+        const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+        const data = await res.json().catch(() => null);
+        const out = {
+          ok: !!(data && data.ok),
+          slug,
+          allowed: !!(data && data.allowed),
+          tenant: data && data.tenant ? data.tenant : null
+        };
+        __tenantStatusCache = out;
+        return out;
+      } catch (_) {
+        const out = { ok: false, slug, allowed: false, tenant: null };
+        __tenantStatusCache = out;
+        return out;
+      }
+    }
+
+    function isLikelyProductPage() {
+      try {
+        const p = String(location.pathname || "").toLowerCase();
+        const href = String(location.href || "").toLowerCase();
+        if (p.includes("/products/")) return true; // Shopify
+        if (p.includes("/product/")) return true;
+        if (p.match(/\/p\/[^/]+/)) return true;
+        if (href.includes("variant=") && p.includes("/products/")) return true;
+      } catch (_) {}
+      return false;
+    }
+
+    function dedupeReviews(arr) {
+      const seen = new Set();
+      const out = [];
+      for (const it of arr || []) {
+        if (!it || it.kind !== "review") continue;
+        const d = it.data || {};
+        const key =
+          normalizeSpaces(stripAllTags(d.authorName || "")) +
+          "|" +
+          String(d.rating || "") +
+          "|" +
+          normalizeSpaces(stripAllTags(d.text || "")).slice(0, 120);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(it);
+      }
+      return out;
+    }
+
+    async function fetchSemanticReviewsForCurrentPage(slug, topN) {
+      if (!slug) return [];
+      // PRO gating
+      const st = await getTenantSemanticStatus(slug);
+      if (!st.allowed) return [];
+
+      const pageUrl = String(location.href || "").trim();
+      if (!pageUrl) return [];
+
+      const top = Math.max(1, Math.min(10, Number(topN) || 5));
+      const url =
+        API_ORIGIN +
+        "/api/semantic?action=for-page" +
+        "&slug=" +
+        encodeURIComponent(slug) +
+        "&url=" +
+        encodeURIComponent(pageUrl) +
+        "&fetchMissing=1" +
+        "&top=" +
+        encodeURIComponent(top) +
+        "&t=" +
+        Date.now();
+
+      const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+      if (!res.ok) throw new Error("Semantic HTTP " + res.status);
+      const data = await res.json();
+      if (!data || !data.ok) return [];
+
+      // matches: [{review:{name,rating,text}}] OR sometimes normalized already
+      const matches = Array.isArray(data.matches) ? data.matches : [];
+      const raw = matches
+        .map((m) => {
+          if (!m) return null;
+          return m.review || m.data || m;
+        })
+        .filter(Boolean);
+
+      return normalizeArray({ reviews: raw }, "review");
+    }
+
     /* =========================================
        7) PERSISTENCE
        ========================================= */
@@ -750,17 +958,27 @@
 
     function itemsSignature(arr) {
       try {
-        const head = (arr || []).slice(0, 3).map((it) => {
-          const k = it?.kind || "x";
-          const d = it?.data || {};
-          if (k === "review") {
-            return "r:" + String(d.authorName || "").slice(0, 20) + ":" + String(d.rating || "") + ":" + String(d.text || "").slice(0, 40);
-          }
-          if (k === "purchase") {
-            return "p:" + String(d.buyer || "").slice(0, 20) + ":" + String(d.product || "").slice(0, 30);
-          }
-          return "x";
-        }).join("|");
+        const head = (arr || [])
+          .slice(0, 3)
+          .map((it) => {
+            const k = it?.kind || "x";
+            const d = it?.data || {};
+            if (k === "review") {
+              return (
+                "r:" +
+                String(d.authorName || "").slice(0, 20) +
+                ":" +
+                String(d.rating || "") +
+                ":" +
+                String(d.text || "").slice(0, 40)
+              );
+            }
+            if (k === "purchase") {
+              return "p:" + String(d.buyer || "").slice(0, 20) + ":" + String(d.product || "").slice(0, 30);
+            }
+            return "x";
+          })
+          .join("|");
         return String(arr.length) + "_" + String(arr[0]?.kind || "x") + "_" + head;
       } catch (_) {
         return (arr || []).length + "_" + (arr[0] ? arr[0].kind : "x");
@@ -778,12 +996,17 @@
     }
 
     function restoreState() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (_) { return null; }
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY));
+      } catch (_) {
+        return null;
+      }
     }
 
     function interleave(reviews, purchases) {
       const out = [];
-      let i = 0, j = 0;
+      let i = 0,
+        j = 0;
       while (i < reviews.length || j < purchases.length) {
         if (i < reviews.length) out.push(reviews[i++]);
         if (j < purchases.length) out.push(purchases[j++]);
@@ -792,8 +1015,14 @@
     }
 
     function clearShowTimers() {
-      if (fadeTimeout) { clearTimeout(fadeTimeout); fadeTimeout = null; }
-      if (removeTimeout) { clearTimeout(removeTimeout); removeTimeout = null; }
+      if (fadeTimeout) {
+        clearTimeout(fadeTimeout);
+        fadeTimeout = null;
+      }
+      if (removeTimeout) {
+        clearTimeout(removeTimeout);
+        removeTimeout = null;
+      }
     }
 
     function scheduleHide(showFor) {
@@ -902,7 +1131,9 @@
       x.textContent = "×";
       x.onclick = function () {
         handleDismiss();
-        try { card.remove(); } catch (_) {}
+        try {
+          card.remove();
+        } catch (_) {}
       };
       card.appendChild(x);
 
@@ -910,9 +1141,7 @@
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
         topBadge.innerHTML =
-          '<div class="modern-badge"><div class="pulse-dot"></div> ' +
-          escapeHTML(BADGE_TEXT) +
-          "</div>";
+          '<div class="modern-badge"><div class="pulse-dot"></div> ' + escapeHTML(BADGE_TEXT) + "</div>";
         card.appendChild(topBadge);
       }
 
@@ -993,7 +1222,9 @@
       x.textContent = "×";
       x.onclick = function () {
         handleDismiss();
-        try { card.remove(); } catch (_) {}
+        try {
+          card.remove();
+        } catch (_) {}
       };
       card.appendChild(x);
 
@@ -1114,34 +1345,88 @@
       let reviewsItems = [];
       let used = "none";
 
-      if (REVIEWS_EP_ATTR) {
-        let url = REVIEWS_EP_ATTR;
-        if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
-          url += (url.indexOf("?") > -1 ? "&" : "?") + "slug=" + encodeURIComponent(CURRENT_SLUG);
-        }
+      // ----- decide semantic vs regular (PRO-only semantic) -----
+      const mode = MODE === "reviews" || MODE === "semantic" || MODE === "hybrid" || MODE === "auto" ? MODE : "auto";
+      const wantsSemantic =
+        mode === "semantic" ||
+        mode === "hybrid" ||
+        (mode === "auto" && isLikelyProductPage());
+
+      // Try semantic first only if "wantsSemantic"
+      if (wantsSemantic && CURRENT_SLUG) {
         try {
-          reviewsItems = await fetchReviewsViaEndpoint(url);
-          used = "endpoint(attr)";
+          if (mode === "hybrid") {
+            const sem = await fetchSemanticReviewsForCurrentPage(CURRENT_SLUG, HYBRID_SEMANTIC_TOP);
+            reviewsItems = dedupeReviews(sem);
+            used = reviewsItems.length ? "semantic(hybrid)" : "semantic(hybrid-empty)";
+          } else {
+            const sem = await fetchSemanticReviewsForCurrentPage(CURRENT_SLUG, SEMANTIC_TOP);
+            reviewsItems = dedupeReviews(sem);
+            used = reviewsItems.length ? "semantic" : "semantic-empty";
+          }
         } catch (e) {
-          console.warn("EVID: reviews endpoint (attr) failed, fallback next.", e);
+          console.warn("EVID: semantic fetch failed, fallback to regular.", e);
+          reviewsItems = [];
+          used = "semantic-error";
         }
       }
 
-      if (!reviewsItems.length && CURRENT_SLUG) {
-        try {
-          const url = DEFAULT_REVIEWS_API_BASE + "?slug=" + encodeURIComponent(CURRENT_SLUG);
-          reviewsItems = await fetchReviewsViaEndpoint(url);
-          used = "endpoint(default)";
-        } catch (e) {
-          console.warn("EVID: default reviews API failed, fallback to Firestore.", e);
+      // If semantic mode but no results (or not PRO), fallback to regular reviews
+      const needRegularFallback =
+        !reviewsItems.length ||
+        mode === "reviews" ||
+        (mode === "hybrid" && reviewsItems.length < HYBRID_TOTAL);
+
+      let regularReviews = [];
+
+      if (needRegularFallback) {
+        // 1) explicit endpoint attr
+        if (REVIEWS_EP_ATTR) {
+          let url = REVIEWS_EP_ATTR;
+          if (CURRENT_SLUG && url.indexOf("slug=") === -1) {
+            url += (url.indexOf("?") > -1 ? "&" : "?") + "slug=" + encodeURIComponent(CURRENT_SLUG);
+          }
+          try {
+            regularReviews = await fetchReviewsViaEndpoint(url);
+            if (used === "none" || used === "semantic-empty" || used === "semantic(hybrid-empty)" || used === "semantic-error")
+              used = "endpoint(attr)";
+          } catch (e) {
+            console.warn("EVID: reviews endpoint (attr) failed, fallback next.", e);
+          }
+        }
+
+        // 2) default API
+        if (!regularReviews.length && CURRENT_SLUG) {
+          try {
+            const url = DEFAULT_REVIEWS_API_BASE + "?slug=" + encodeURIComponent(CURRENT_SLUG);
+            regularReviews = await fetchReviewsViaEndpoint(url);
+            if (used === "none" || used === "semantic-empty" || used === "semantic(hybrid-empty)" || used === "semantic-error")
+              used = "endpoint(default)";
+          } catch (e) {
+            console.warn("EVID: default reviews API failed, fallback to Firestore.", e);
+          }
+        }
+
+        // 3) firestore fallback
+        if (!regularReviews.length) {
+          regularReviews = await fetchReviewsViaFirestore(CURRENT_SLUG);
+          if (used === "none" || used === "semantic-empty" || used === "semantic(hybrid-empty)" || used === "semantic-error")
+            used = "firestore";
         }
       }
 
-      if (!reviewsItems.length) {
-        reviewsItems = await fetchReviewsViaFirestore(CURRENT_SLUG);
-        used = "firestore";
+      // If hybrid: fill to HYBRID_TOTAL using regular reviews
+      if (mode === "hybrid") {
+        const target = HYBRID_TOTAL;
+        const merged = dedupeReviews(reviewsItems.concat(regularReviews));
+        reviewsItems = merged.slice(0, target);
+        used = used + "+fill";
+      } else if (!reviewsItems.length) {
+        // for reviews/auto/semantic fallback
+        reviewsItems = regularReviews;
       }
 
+      // Purchases (unchanged)
       let purchasesItems = [];
       if (PURCHASES_EP) {
         try {
@@ -1152,6 +1437,7 @@
         }
       }
 
+      // final filter
       reviewsItems = (reviewsItems || []).filter((v) => {
         const t = normalizeSpaces(stripAllTags(v?.data?.text || ""));
         return t.length > 0 && !t.includes("אנא ספק לי");
@@ -1160,9 +1446,19 @@
       items = interleave(reviewsItems, purchasesItems);
       itemsSig = itemsSignature(items);
 
+      // status for logs (optional)
+      let semanticAllowed = false;
+      try {
+        const st = await getTenantSemanticStatus(CURRENT_SLUG);
+        semanticAllowed = !!st.allowed;
+      } catch (_) {}
+
       console.log("EVID: loadAll done", {
         slug: CURRENT_SLUG,
         widgetId: __WIDGET_ID__,
+        mode,
+        wantsSemantic,
+        semanticAllowed,
         used,
         color: THEME_COLOR,
         font: SELECTED_FONT,
