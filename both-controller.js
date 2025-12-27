@@ -883,44 +883,90 @@ function buildClientContextText() {
 }
 
     async function fetchSemanticReviewsForCurrentPage(slug, topN) {
-      if (!slug) return [];
-      // Prefer canonical URL (cleaner + more stable for semantic matching)
-let pageUrl = "";
-try {
-  const canonicalEl = document.querySelector('link[rel="canonical"]');
-  const canonicalHref = canonicalEl ? canonicalEl.getAttribute("href") : "";
-  pageUrl = String(canonicalHref || location.href || "").trim();
-} catch (_) {
-  pageUrl = String(location.href || "").trim();
-}
+  if (!slug) return [];
 
-      if (!pageUrl) return [];
-       const ctx = buildClientContextText();
+  // Prefer canonical URL (cleaner + more stable)
+  let pageUrl = "";
+  try {
+    const canonicalEl = document.querySelector('link[rel="canonical"]');
+    const canonicalHref = canonicalEl ? canonicalEl.getAttribute("href") : "";
+    pageUrl = String(canonicalHref || location.href || "").trim();
+  } catch (_) {
+    pageUrl = String(location.href || "").trim();
+  }
+  if (!pageUrl) return [];
 
-      const top = Math.max(1, Math.min(25, Number(topN) || 20));
-
-      const url =
-  DEFAULT_REVIEWS_API_BASE +
-  "?slug=" + encodeURIComponent(slug) +
-  "&url=" + encodeURIComponent(pageUrl) +
-  "&ctx=" + encodeURIComponent(ctx) +
-  "&fetchMissing=0" +
-  "&top=" + encodeURIComponent(top) +
-  "&t=" + Date.now();
-
-
-      const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
-      if (!res.ok) throw new Error("Semantic(get-reviews) HTTP " + res.status);
-
-      const data = await res.json().catch(() => null);
-      if (!data || !data.ok) return [];
-
-      // Only treat as semantic if backend says so
-      const sem = data.semantic || null;
-      if (!sem || sem.used !== true) return [];
-
-      return normalizeArray(data, "review");
+  // Build a focused context (avoid menus / mega text)
+  function pickText(sel) {
+    try {
+      const el = document.querySelector(sel);
+      return el ? String(el.textContent || "").replace(/\s+/g, " ").trim() : "";
+    } catch (_) {
+      return "";
     }
+  }
+  function pickAttr(sel, attr) {
+    try {
+      const el = document.querySelector(sel);
+      const v = el ? el.getAttribute(attr) : "";
+      return String(v || "").replace(/\s+/g, " ").trim();
+    } catch (_) {
+      return "";
+    }
+  }
+  function uniqJoin(parts, maxLen) {
+    const seen = new Set();
+    const out = [];
+    for (const p of parts) {
+      const s = String(p || "").trim();
+      if (!s) continue;
+      const key = s.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    let txt = out.join(". ").replace(/\s+/g, " ").trim();
+    if (txt.length > maxLen) txt = txt.slice(0, maxLen).trim();
+    return txt;
+  }
+
+  const h1 = pickText("h1");
+  const title = String(document.title || "").trim();
+  const desc = pickAttr('meta[name="description"]', "content");
+  const bc =
+    pickText('nav[aria-label="breadcrumb"]') ||
+    pickText(".breadcrumb") ||
+    pickText(".breadcrumbs") ||
+    pickText("ol.breadcrumb");
+
+  const ctx = uniqJoin([h1, title, bc, desc], 900);
+
+  const top = Math.max(1, Math.min(25, Number(topN) || 20));
+
+  // IMPORTANT: ask backend to scan more candidates for ranking
+  const limit = 200;
+
+  const url =
+    DEFAULT_REVIEWS_API_BASE +
+    "?slug=" + encodeURIComponent(slug) +
+    "&url=" + encodeURIComponent(pageUrl) +
+    "&ctx=" + encodeURIComponent(ctx) +
+    "&fetchMissing=0" +
+    "&limit=" + encodeURIComponent(limit) +
+    "&top=" + encodeURIComponent(top) +
+    "&t=" + Date.now();
+
+  const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
+  if (!res.ok) throw new Error("Semantic(get-reviews) HTTP " + res.status);
+
+  const data = await res.json().catch(() => null);
+  if (!data || !data.ok) return [];
+
+  const sem = data.semantic || null;
+  if (!sem || sem.used !== true) return [];
+
+  return normalizeArray(data, "review");
+}
 
     /* =========================================
        7) PERSISTENCE
