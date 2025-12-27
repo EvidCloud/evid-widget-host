@@ -506,17 +506,17 @@
 
     const SEMANTIC_TOP = Math.max(
       1,
-      Math.min(25, Number((currentScript && currentScript.getAttribute("data-semantic-top")) || 5) || 5)
+      Math.min(25, Number((currentScript && currentScript.getAttribute("data-semantic-top")) || 20) || 20)
     );
 
     const HYBRID_SEMANTIC_TOP = Math.max(
       1,
-      Math.min(25, Number((currentScript && currentScript.getAttribute("data-hybrid-semantic-top")) || 3) || 3)
+      Math.min(25, Number((currentScript && currentScript.getAttribute("data-hybrid-semantic-top")) || 10) || 10)
     );
 
     const HYBRID_TOTAL = Math.max(
       1,
-      Math.min(25, Number((currentScript && currentScript.getAttribute("data-hybrid-total")) || 5) || 5)
+      Math.min(25, Number((currentScript && currentScript.getAttribute("data-hybrid-total")) || 20) || 20)
     );
 
     // ===== CURRENT SLUG =====
@@ -858,21 +858,56 @@
       }
       return out;
     }
+function getMetaContent(name) {
+  const el = document.querySelector(`meta[name="${name}"]`);
+  return el ? (el.getAttribute("content") || "").trim() : "";
+}
+
+function buildClientContextText() {
+  const title = (document.title || "").trim();
+  const h1 = (document.querySelector("h1")?.textContent || "").trim();
+  const desc = getMetaContent("description");
+
+  // נסיון פשוט לבירדקרמבס/כותרות מוצר (עוזר לאיקומרס)
+  const crumbs =
+    Array.from(document.querySelectorAll("nav.breadcrumb, .breadcrumb, [aria-label*='breadcrumb'], .woocommerce-breadcrumb a, .woocommerce-breadcrumb"))
+      .map((x) => (x.textContent || "").trim())
+      .filter(Boolean)
+      .slice(0, 12)
+      .join(" | ");
+
+  const parts = [title, h1, desc, crumbs].filter(Boolean);
+  // לא צריך מגילה—רק מספיק טקסט כדי לדרג ביקורות
+  const ctx = parts.join("\n").slice(0, 1200);
+  return ctx;
+}
 
     async function fetchSemanticReviewsForCurrentPage(slug, topN) {
       if (!slug) return [];
-      const pageUrl = String(location.href || "").trim();
-      if (!pageUrl) return [];
+      // Prefer canonical URL (cleaner + more stable for semantic matching)
+let pageUrl = "";
+try {
+  const canonicalEl = document.querySelector('link[rel="canonical"]');
+  const canonicalHref = canonicalEl ? canonicalEl.getAttribute("href") : "";
+  pageUrl = String(canonicalHref || location.href || "").trim();
+} catch (_) {
+  pageUrl = String(location.href || "").trim();
+}
 
-      const top = Math.max(1, Math.min(25, Number(topN) || 5));
+      if (!pageUrl) return [];
+       const ctx = buildClientContextText();
+
+      const top = Math.max(1, Math.min(25, Number(topN) || 20));
 
       const url =
-        DEFAULT_REVIEWS_API_BASE +
-        "?slug=" + encodeURIComponent(slug) +
-        "&url=" + encodeURIComponent(pageUrl) +
-        "&fetchMissing=1" +
-        "&top=" + encodeURIComponent(top) +
-        "&t=" + Date.now();
+  DEFAULT_REVIEWS_API_BASE +
+  "?slug=" + encodeURIComponent(slug) +
+  "&url=" + encodeURIComponent(pageUrl) +
+  "&ctx=" + encodeURIComponent(ctx) +
+  "&fetchMissing=0" +
+  "&top=" + encodeURIComponent(top) +
+  "&t=" + Date.now();
+
 
       const res = await fetch(url, { method: "GET", credentials: "omit", cache: "no-store" });
       if (!res.ok) throw new Error("Semantic(get-reviews) HTTP " + res.status);
