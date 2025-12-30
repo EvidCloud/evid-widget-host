@@ -1135,7 +1135,7 @@ function calcNeedsReadMore(body, card) {
     // אם עדיין אין מידות טובות (לפעמים קורה רגע לפני render מלא) – fallback שמרני
     if (!clampH || w < 50) {
       const plain = normalizeSpaces(stripAllTags(body.textContent || ""));
-      return plain.length > 120;
+      return plain.length > 75;
     }
 
     // מודד טקסט "מורחב" בלי לשנות את האלמנט האמיתי (בלי פלאש)
