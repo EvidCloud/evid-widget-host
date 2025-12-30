@@ -1127,6 +1127,66 @@ function buildClientContextText() {
         });
       } catch (_) {}
     }
+function calcNeedsReadMore(body, card) {
+  try {
+    const clampH = body.getBoundingClientRect().height;
+    const w = Math.ceil(body.getBoundingClientRect().width);
+
+    // אם עדיין אין מידות טובות (לפעמים קורה רגע לפני render מלא) – fallback שמרני
+    if (!clampH || w < 50) {
+      const plain = normalizeSpaces(stripAllTags(body.textContent || ""));
+      return plain.length > 120;
+    }
+
+    // מודד טקסט "מורחב" בלי לשנות את האלמנט האמיתי (בלי פלאש)
+    const probe = document.createElement("div");
+    probe.className = "review-text expanded";
+    probe.style.position = "absolute";
+    probe.style.left = "-99999px";
+    probe.style.top = "0";
+    probe.style.width = w + "px";
+    probe.style.visibility = "hidden";
+    probe.style.pointerEvents = "none";
+
+    // חשוב: משתמשים באותו HTML שכבר יש ב-body (כולל smart-mark אם קיים)
+    probe.innerHTML = body.innerHTML;
+
+    card.appendChild(probe);
+    const fullH = probe.getBoundingClientRect().height;
+    card.removeChild(probe);
+
+    return fullH > clampH + 2;
+  } catch (_) {
+    // במקרה של ספק — עדיף להציג כפתור ולא להסתיר טקסט
+    return true;
+  }
+}
+
+function scheduleReadMoreCheck(body, btn, card) {
+  const run = () => {
+    const should = calcNeedsReadMore(body, card);
+    btn.style.display = should ? "block" : "none";
+  };
+
+  run(); // מיידי
+
+  // עוד 2 frames (עוזר אחרי layout + paint)
+  requestAnimationFrame(() => {
+    run();
+    requestAnimationFrame(run);
+  });
+
+  // עוד קצת אחרי (פונטים/רוחב/אייקונים)
+  setTimeout(run, 200);
+  setTimeout(run, 800);
+
+  // וכשפונטים מוכנים
+  try {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => setTimeout(run, 0));
+    }
+  } catch (_) {}
+}
 
     /* =========================================
        8) RENDERERS
@@ -1194,11 +1254,7 @@ function buildClientContextText() {
       readMoreBtn.textContent = "קרא עוד...";
       readMoreBtn.style.display = "none";
 
-      setTimeout(() => {
-        try {
-          if (body.scrollHeight > body.clientHeight + 1) readMoreBtn.style.display = "block";
-        } catch (_) {}
-      }, 0);
+      scheduleReadMoreCheck(body, readMoreBtn, card);
 
       readMoreBtn.onclick = function (e) {
         e.stopPropagation();
