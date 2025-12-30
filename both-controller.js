@@ -606,7 +606,7 @@
       + ".g-icon-svg{width:12px;height:12px;display:block;}"
       + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
-      + ".read-more-btn{font-size:11px;color:" + THEME_COLOR + ";font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
+      + ".read-more-btn{font-size:11px;color:#000000;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
       + ".read-more-btn:hover{text-decoration:underline;}"
       + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
       + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
