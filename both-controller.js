@@ -1259,30 +1259,26 @@ function scheduleReadMoreCheck(body, btn, card) {
       readMoreBtn.onclick = function (e) {
         e.stopPropagation();
         const wasExpanded = body.classList.contains("expanded");
+
+        // 1. מבטל בכוח אנימציות CSS (כדי למנוע החלקה לא רצויה)
+        card.style.transition = "none";
+        card.style.height = "auto";
+
         if (!wasExpanded) {
+          // --- פתיחה מיידית ---
           body.classList.add("expanded");
           readMoreBtn.textContent = "סגור";
+          
+          // לוגיקה של הווידג'ט (עצירת טיימר החלפה)
           pauseForReadMore();
-          expandCardToFit(card);
         } else {
-  // 1. נועלים את הגובה הנוכחי (הגבוה) כדי למנוע קפיצה
-  const startH = card.getBoundingClientRect().height;
-  card.style.height = startH + "px";
-  card.offsetHeight; // פקודה שמכריחה את הדפדפן להבין שהגובה ננעל
-
-  // 2. רק עכשיו מקטינים את הטקסט
-  body.classList.remove("expanded");
-  readMoreBtn.textContent = "קרא עוד...";
-
-  // 3. מבצעים אנימציה חלקה לגובה החדש (הקטן)
-  requestAnimationFrame(() => {
-    // scrollHeight ייתן לנו את הגובה שהכרטיס *צריך* להיות בו כשהטקסט קטן
-    const targetH = card.scrollHeight;
-    animateCardHeight(card, targetH);
-  });
-
-  resumeFromReadMore();
-}
+          // --- סגירה מיידית ---
+          body.classList.remove("expanded");
+          readMoreBtn.textContent = "קרא עוד...";
+          
+          // לוגיקה של הווידג'ט (המשך טיימר החלפה)
+          resumeFromReadMore();
+        }
       };
 
       card.appendChild(body);
