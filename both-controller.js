@@ -599,7 +599,7 @@
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}"
       + ".card.compact .review-header{margin-bottom:7px;}"
       + ".user-pill{display:flex;align-items:center;gap:8px;}"
-      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg," + THEME_COLOR + " 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
+      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
       + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}"
       + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
       + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
