@@ -1265,11 +1265,24 @@ function scheduleReadMoreCheck(body, btn, card) {
           pauseForReadMore();
           expandCardToFit(card);
         } else {
-          body.classList.remove("expanded");
-          readMoreBtn.textContent = "קרא עוד...";
-          collapseCardToFit(card);
-          resumeFromReadMore();
-        }
+  // 1. נועלים את הגובה הנוכחי (הגבוה) כדי למנוע קפיצה
+  const startH = card.getBoundingClientRect().height;
+  card.style.height = startH + "px";
+  card.offsetHeight; // פקודה שמכריחה את הדפדפן להבין שהגובה ננעל
+
+  // 2. רק עכשיו מקטינים את הטקסט
+  body.classList.remove("expanded");
+  readMoreBtn.textContent = "קרא עוד...";
+
+  // 3. מבצעים אנימציה חלקה לגובה החדש (הקטן)
+  requestAnimationFrame(() => {
+    // scrollHeight ייתן לנו את הגובה שהכרטיס *צריך* להיות בו כשהטקסט קטן
+    const targetH = card.scrollHeight;
+    animateCardHeight(card, targetH);
+  });
+
+  resumeFromReadMore();
+}
       };
 
       card.appendChild(body);
