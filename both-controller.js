@@ -1,4 +1,4 @@
-/* both-controller v4.5.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -701,12 +701,24 @@
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
       + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
+      // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
+      // 1. צבע הכוכבים תואם לצבע הראשי + ביטול מיקום אבסולוטי
+      + ".card.style-exec .stars { position: static; margin-top: 4px; color: " + THEME_COLOR + "; }"
       
-      + ".card.compact { padding: 12px !important; width: 260px !important; }"
-      + ".card.compact .review-text { font-size: 12px; line-height: 1.4; }"
-      + ".card.compact .reviewer-name { font-size: 13px; }"
-      + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 30px; height: 30px; font-size: 12px; }"
-      + ".card.compact .stars { display: none !important; }" 
+      // 2. רקע הלוגו של גוגל תואם לצבע הראשי
+      + ".card.style-exec .stars svg { background: " + THEME_COLOR + " !important; border-radius: 50%; }"
+      // === תיקון מצב קומפקטי (Compact) ===
+      // 1. הקטנת שוליים ורווחים (פחות שטח לבן)
+      + ".card.compact { padding: 8px 10px !important; width: 250px !important; min-height: auto; }"
+      + ".card.compact .review-header { margin-bottom: 6px; }" 
+      
+      // 2. התאמת גודל טקסט ואווטאר
+      + ".card.compact .review-text { font-size: 11.5px; line-height: 1.35; margin-top: 2px; }"
+      + ".card.compact .reviewer-name { font-size: 12.5px; }"
+      + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 26px; height: 26px; font-size: 11px; }"
+      
+      // 3. החזרת הכוכבים והלוגו! (ביטול הסתרה + ביטול מיקום אבסולוטי כדי שייכנסו בשורה)
+      + ".card.compact .stars { display: flex !important; position: static !important; transform: scale(0.85); margin: 0; }"
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
@@ -1326,7 +1338,16 @@ function scheduleReadMoreCheck(body, btn, card) {
 
       // מכניסים ל-Header: הראשון ילך לימין, השני לשמאל
       header.appendChild(userPill);
-      header.appendChild(starsDiv);
+      // לוגיקה ייחודית לעיצוב Executive: הכוכבים נכנסים מתחת לשם
+      if (CARD_STYLE === 'exec') {
+          // מבטל את הריווח האוטומטי של ה-Flex בשורה הזו כדי שהם יהיו צמודים
+          nameCol.style.display = "flex";
+          nameCol.style.flexDirection = "column";
+          nameCol.appendChild(starsDiv);
+      } else {
+          // בשאר העיצובים: מיקום אבסולוטי/צדדי
+          header.appendChild(starsDiv);
+      }
       
       card.appendChild(header);
 
