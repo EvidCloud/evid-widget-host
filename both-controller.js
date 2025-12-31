@@ -1,4 +1,4 @@
-/* both-controller v4.5.1 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -226,7 +226,7 @@
        3) SETTINGS & TRANSLATIONS
        ========================================= */
     const DYNAMIC_SETTINGS = {
-      lang: "he", // ברירת מחדל
+      lang: "he",
       color: "#4f46e5",
       font: "Rubik",
       position: "bottom-right",
@@ -241,7 +241,6 @@
       cardStyle: "default"
     };
 
-    // מילון תרגומים - חובה להוסיף את זה כאן
     const DICT = {
       he: {
         dir: "rtl",
@@ -267,12 +266,9 @@
       }
     };
     
-    const BADGE_TRANSLATIONS = {
-      "פידבק מהשטח": "Feedback from customers",
-      "הפרגונים שלכם": "Your compliments",
-      "המחמאות שקיבלנו": "The praise we got",
-      "מה כתבתם עלינו": "What you wrote about us"
-    };
+    // === התיקון הגדול: משתנים גלובליים ===
+    let CURR_LANG = "he";
+    let T_DATA = DICT.he;
 
     let markerSource = "default";
     let badgeSource = "default";
@@ -546,16 +542,17 @@
 
     const SEMANTIC_ENABLED = !!DYNAMIC_SETTINGS.semanticEnabled;
      const CARD_STYLE = DYNAMIC_SETTINGS.cardStyle || "default";
-     // חישוב נתונים לשפה
-    const CURR_LANG = (DYNAMIC_SETTINGS.lang === "en") ? "en" : "he";
-    const T_DATA = DICT[CURR_LANG];
+    const THEME_RGB = hexToRgb(THEME_COLOR) || "79, 70, 229";
+
+    // === תיקון: עדכון המשתנים הגלובליים (בלי const) ===
+    CURR_LANG = (DYNAMIC_SETTINGS.lang === "en") ? "en" : "he";
+    T_DATA = DICT[CURR_LANG];
     
-    // תרגום באדג' אם צריך
+    // תרגום באדג'
     let FINAL_BADGE_TEXT = BADGE_TEXT;
     if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
         FINAL_BADGE_TEXT = BADGE_TRANSLATIONS[BADGE_TEXT];
     }
-    const THEME_RGB = hexToRgb(THEME_COLOR) || "79, 70, 229";
 
     const DEFAULT_PRODUCT_IMG =
       (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -649,7 +646,6 @@
       ""
       + ":host{all:initial;}"
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
-      // כיוון דינמי (RTL/LTR) ויישור טקסט לפי השפה
       + ".wrap{position:fixed;z-index:2147483000;direction:" + T_DATA.dir + ";pointer-events:none;display:block;text-align:" + T_DATA.align + ";}"
       
       + ".card{position:relative;width:290px;max-width:90vw;background:#fff;padding:16px;pointer-events:auto;overflow:hidden;transition:none!important;height:auto;}"
@@ -659,13 +655,14 @@
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
       + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
       
-      // כפתור ה-X: המיקום שלו נקבע לפי הצד הנגדי לשפה (oppAlign)
+      // X Button
       + ".xbtn{position:absolute;top:8px;" + T_DATA.oppAlign + ":8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
       
       + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
       
-      // הכוכבים: בעיצובים החדשים הם בצד הנגדי (oppAlign)
+      // === תיקון כוכבים קריטי ===
+      // אנחנו משתמשים ב-oppAlign (הצד הנגדי) כדי למקם אותם
       + ".stars{position:absolute; top:32px; " + T_DATA.oppAlign + ":16px; color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
       
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;width:100%;}"
@@ -678,12 +675,11 @@
       + ".user-pill{display:flex;align-items:center;gap:10px;}"
       + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
       + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
-      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;white-space:nowrap;}"
+      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;}"
       
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
-      + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
-      // === STYLES ===
+      + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"      // === STYLES ===
       + ".card.style-default{border-radius:18px;box-shadow:0 8px 25px -8px rgba(0,0,0,.1);border-top:4px solid " + THEME_COLOR + ";}"
       + ".card.style-default .read-more-btn{color:#000;}"
 
@@ -1347,18 +1343,23 @@ function scheduleReadMoreCheck(body, btn, card) {
       
       // ... (המשך קוד) ...
 
-      readMoreBtn.onclick = function (e) {
-        // ...
-        if (!wasExpanded) {
-          body.classList.add("expanded");
-          readMoreBtn.textContent = T_DATA.close; // שימוש בתרגום
-          pauseForReadMore();
-        } else {
-          body.classList.remove("expanded");
-          readMoreBtn.textContent = T_DATA.readMore; // שימוש בתרגום
-          resumeFromReadMore();
-        }
-      };
+      // שימוש ב-T_DATA הגלובלי
+  readMoreBtn.onclick = function (e) {
+    e.stopPropagation();
+    const wasExpanded = body.classList.contains("expanded");
+    card.style.transition = "none";
+    card.style.height = "auto";
+
+    if (!wasExpanded) {
+      body.classList.add("expanded");
+      readMoreBtn.textContent = T_DATA.close; // כאן היה הבאג
+      pauseForReadMore();
+    } else {
+      body.classList.remove("expanded");
+      readMoreBtn.textContent = T_DATA.readMore; // וגם כאן
+      resumeFromReadMore();
+    }
+  };
 
       card.appendChild(body);
       card.appendChild(readMoreBtn);
