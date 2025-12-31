@@ -1,4 +1,4 @@
-/* both-controller v4.5.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -652,22 +652,6 @@
          FINAL_BADGE_TEXT = BADGE_TEXT;
     }
     const style = document.createElement("style");
-     // === FIX: חישוב מחדש של שפה וכיוון ברגע האמת ===
-// 1. קריאת השפה העדכנית מההגדרות
-if (DYNAMIC_SETTINGS.lang === "en") {
-    CURR_LANG = "en";
-    T_DATA = DICT.en;
-} else {
-    CURR_LANG = "he";
-    T_DATA = DICT.he;
-}
-
-// 2. עדכון תרגום הבאדג' אם צריך
-if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
-     FINAL_BADGE_TEXT = BADGE_TRANSLATIONS[BADGE_TEXT];
-} else {
-     FINAL_BADGE_TEXT = BADGE_TEXT;
-}
     style.textContent =
       ""
       + ":host{all:initial;}"
@@ -1259,53 +1243,50 @@ function buildClientContextText() {
       } catch (_) {}
     }
 function calcNeedsReadMore(body, card) {
-  try {
-    const clampH = body.getBoundingClientRect().height;
-    const w = Math.ceil(body.getBoundingClientRect().width);
+      try {
+        const clampH = body.getBoundingClientRect().height;
+        const w = Math.ceil(body.getBoundingClientRect().width);
 
-    // אם עדיין אין מידות טובות (לפעמים קורה רגע לפני render מלא) – fallback שמרני
-    if (!clampH || w < 50) {
-      const plain = normalizeSpaces(stripAllTags(body.textContent || ""));
-      return plain.length > 75;
+        // אם עדיין אין מידות טובות – fallback שמרני
+        if (!clampH || w < 50) {
+          const plain = normalizeSpaces(stripAllTags(body.textContent || ""));
+          return plain.length > 75;
+        }
+
+        // מודד טקסט "מורחב" בלי לשנות את האלמנט האמיתי
+        const probe = document.createElement("div");
+        probe.className = "review-text expanded";
+        probe.style.position = "absolute";
+        probe.style.left = "-99999px";
+        probe.style.top = "0";
+        probe.style.width = w + "px";
+        probe.style.visibility = "hidden";
+        probe.style.pointerEvents = "none";
+
+        // שימוש באותו HTML
+        probe.innerHTML = body.innerHTML;
+        card.appendChild(probe);
+        const fullH = probe.getBoundingClientRect().height;
+        card.removeChild(probe);
+
+        return fullH > clampH + 2;
+      } catch (_) {
+        return true;
+      }
     }
 
-    // מודד טקסט "מורחב" בלי לשנות את האלמנט האמיתי (בלי פלאש)
-    const probe = document.createElement("div");
-    probe.className = "review-text expanded";
-    probe.style.position = "absolute";
-    probe.style.left = "-99999px";
-    probe.style.top = "0";
-    probe.style.width = w + "px";
-    probe.style.visibility = "hidden";
-    probe.style.pointerEvents = "none";
-
-    // חשוב: משתמשים באותו HTML שכבר יש ב-body (כולל smart-mark אם קיים)
-    probe.innerHTML = body.innerHTML;
-
-    card.appendChild(probe);
-    const fullH = probe.getBoundingClientRect().height;
-    card.removeChild(probe);
-
-    return fullH > clampH + 2;
-  } catch (_) {
-    // במקרה של ספק — עדיף להציג כפתור ולא להסתיר טקסט
-    return true;
-  }
-}
-
-function scheduleReadMoreCheck(el, btn, card) {
-      // 1. הסתרה כברירת מחדל כדי למנוע הבהוב
+    function scheduleReadMoreCheck(el, btn, card) {
+      // 1. הסתרה כברירת מחדל
       btn.style.display = "none";
       
-      // 2. בדיקה באמצעות הפונקציה המדויקת (calcNeedsReadMore) שקיימת בקובץ
-      // הפונקציה הזו יוצרת עותק נסתר ומודדת את הגובה האמיתי של הטקסט
+      // 2. בדיקה מושהית ומדויקת
       setTimeout(function() {
         if (typeof calcNeedsReadMore === "function") {
             if (calcNeedsReadMore(el, card)) {
                 btn.style.display = "block";
             }
         } else {
-            // גיבוי למקרה חירום (לא אמור לקרות)
+            // גיבוי למקרה חירום
             if (el.scrollHeight > el.clientHeight + 5) {
                 btn.style.display = "block";
             }
