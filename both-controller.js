@@ -617,24 +617,24 @@
       
       + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
       
-      // === FIX: Badge (לפי בקשתך - נשאר כמו שהיה כי זה עובד) ===
+      // Badge
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:12px;width:100%;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
       + ".card.style-forest .modern-badge{background:rgba(255,255,255,0.15); color:#fff;}"
       + ".card.style-forest .pulse-dot{background:#4ade80;}"
 
-      // === FIX: Header & Name Row (התיקון לכוכבים) ===
+      // === HEADER LAYOUT (התיקון לריווח) ===
+      // space-between מבטיח שהאלמנט הראשון ילך לימין והשני לשמאל (ב-RTL)
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
-      + ".user-pill{display:flex;align-items:center;gap:10px;width:100%;}"
+      
+      // user-pill מחזיק רק את התמונה והשם ביחד בצד ימין
+      + ".user-pill{display:flex;align-items:center;gap:10px;}"
       + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
-      
-      + ".name-col{display:flex;flex-direction:column; justify-content:center; flex:1; min-width:0;}"
-      
-      // === התיקון הגדול: שורה אחת לשם ולכוכבים ===
-      // display:flex ו-align-items:center מבטיחים שהם באותו גובה בדיוק
-      + ".name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}"
+      + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
       + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;white-space:nowrap;}"
+      
+      // stars הולך לצד שמאל לבד
       + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; margin:0; padding:0; line-height:1;}"
 
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
@@ -1247,10 +1247,8 @@ function scheduleReadMoreCheck(body, btn, card) {
        ========================================= */
     function renderReviewCard(item) {
       const card = document.createElement("div");
-      // הוספת הסטייל הנבחר
       card.className = "card review-card enter style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
 
-      // כפתור סגירה (X)
       const x = document.createElement("button");
       x.className = "xbtn";
       x.textContent = "×";
@@ -1265,38 +1263,33 @@ function scheduleReadMoreCheck(body, btn, card) {
         card.appendChild(topBadge);
       }
 
-      // אזור עליון
+      // === אזור עליון (Header) ===
+      // זה הקונטיינר שמפזר לצדדים
       const header = document.createElement("div");
       header.className = "review-header";
 
+      // --- צד ימין: תמונה ושם ---
       const userPill = document.createElement("div");
       userPill.className = "user-pill";
       userPill.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
 
       const nameCol = document.createElement("div");
       nameCol.className = "name-col";
-      
-      // === התיקון: שורה אחת לשם ולכוכבים ===
-      const nameRow = document.createElement("div");
-      nameRow.className = "name-row";
-
       const nm = document.createElement("span");
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
-      
+      nameCol.appendChild(nm);
+      userPill.appendChild(nameCol);
+
+      // --- צד שמאל: כוכבים ולוגו ---
       const starsDiv = document.createElement("div");
       starsDiv.className = "stars";
       starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
 
-      // מכניסים אותם לאותה שורה
-      nameRow.appendChild(nm);
-      nameRow.appendChild(starsDiv);
-      
-      // מכניסים את השורה לתוך העמודה
-      nameCol.appendChild(nameRow);
-      
-      userPill.appendChild(nameCol);
+      // מכניסים ל-Header: הראשון ילך לימין, השני לשמאל
       header.appendChild(userPill);
+      header.appendChild(starsDiv);
+      
       card.appendChild(header);
 
       // גוף הביקורת
