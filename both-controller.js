@@ -615,44 +615,40 @@
       + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
       
-      // Marker Style
       + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
       
-      // --- LOGIC FOR STARS LOCATION ---
-      // 1. בסיס: עיצוב הכוכבים
-      + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
-      // 2. עיצוב ברירת מחדל: הכוכבים זורמים מתחת לשם (לא אבסולוטי)
-      + ".card.style-default .stars{ margin-top: 2px; }"
-      // 3. עיצובים חדשים: הכוכבים במיקום קבוע בצד שמאל למעלה
-      + ".card:not(.style-default) .stars{ position:absolute; top:32px; left:16px; }"
-
-      // Badge Style
-      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
+      // === FIX: Badge (לפי בקשתך - נשאר כמו שהיה כי זה עובד) ===
+      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:12px;width:100%;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
-      
-      // התאמת באדג' לעיצוב כהה (Forest)
       + ".card.style-forest .modern-badge{background:rgba(255,255,255,0.15); color:#fff;}"
       + ".card.style-forest .pulse-dot{background:#4ade80;}"
 
+      // === FIX: Header & Name Row (התיקון לכוכבים) ===
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
-      + ".user-pill{display:flex;align-items:center;gap:10px;}"
+      + ".user-pill{display:flex;align-items:center;gap:10px;width:100%;}"
       + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
-      + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
-      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;}"
       
+      + ".name-col{display:flex;flex-direction:column; justify-content:center; flex:1; min-width:0;}"
+      
+      // === התיקון הגדול: שורה אחת לשם ולכוכבים ===
+      // display:flex ו-align-items:center מבטיחים שהם באותו גובה בדיוק
+      + ".name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}"
+      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;white-space:nowrap;}"
+      + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; margin:0; padding:0; line-height:1;}"
+
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
 
-      // === STYLES CONFIG ===
+      // === STYLES ===
       + ".card.style-default{border-radius:18px;box-shadow:0 8px 25px -8px rgba(0,0,0,.1);border-top:4px solid " + THEME_COLOR + ";}"
       + ".card.style-default .read-more-btn{color:#000;}"
 
       + ".card.style-forest{background:linear-gradient(145deg, rgba(" + THEME_RGB + ", 0.95), rgba(" + THEME_RGB + ", 0.85)); border:1px solid rgba(255,255,255,0.2); border-radius:20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); color:#fff;}"
       + ".card.style-forest .reviewer-name{color:#fff;}"
       + ".card.style-forest .review-text{color:rgba(255,255,255,0.9);}"
-      + ".card.style-forest .smart-mark{background-color:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4);}" 
+      + ".card.style-forest .smart-mark{background-color:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4);}"
       + ".card.style-forest .xbtn{background:rgba(255,255,255,0.2);color:#fff;}"
       + ".card.style-forest .read-more-btn{color:#fff; opacity:0.9; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.5);}"
 
@@ -672,7 +668,7 @@
       + ".card.compact .review-text { font-size: 12px; line-height: 1.4; }"
       + ".card.compact .reviewer-name { font-size: 13px; }"
       + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 30px; height: 30px; font-size: 12px; }"
-      + ".card.compact .stars { top: 30px; font-size: 9px; }" 
+      + ".card.compact .stars { display: none !important; }" 
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
@@ -1261,13 +1257,7 @@ function scheduleReadMoreCheck(body, btn, card) {
       x.onclick = function () { handleDismiss(); try { card.remove(); } catch (_) {} };
       card.appendChild(x);
       
-      // יצירת הכוכבים
-      const starsDiv = document.createElement("div");
-      starsDiv.className = "stars";
-      starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
-
-      // באדג' (כותרת) - עכשיו עובד בכל העיצובים (רק לא בקומפקט)
-      // מחקנו את התנאי && CARD_STYLE === "default"
+      // באדג' (כותרת)
       if (SIZE_MODE !== "compact" && BADGE_ENABLED) {
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
@@ -1275,7 +1265,7 @@ function scheduleReadMoreCheck(body, btn, card) {
         card.appendChild(topBadge);
       }
 
-      // אזור עליון: תמונה ושם
+      // אזור עליון
       const header = document.createElement("div");
       header.className = "review-header";
 
@@ -1286,21 +1276,25 @@ function scheduleReadMoreCheck(body, btn, card) {
       const nameCol = document.createElement("div");
       nameCol.className = "name-col";
       
+      // === התיקון: שורה אחת לשם ולכוכבים ===
+      const nameRow = document.createElement("div");
+      nameRow.className = "name-row";
+
       const nm = document.createElement("span");
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
       
-      nameCol.appendChild(nm);
+      const starsDiv = document.createElement("div");
+      starsDiv.className = "stars";
+      starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
 
-      // --- לוגיקת מיקום הכוכבים ---
-      if (CARD_STYLE === "default") {
-          // בעיצוב הרגיל: הכוכבים נכנסים לתוך העמודה של השם (מתחת לשם)
-          nameCol.appendChild(starsDiv);
-      } else {
-          // בעיצובים החדשים: הכוכבים מתווספים לכרטיס עצמו (כדי שיהיו במיקום אבסולוטי בצד)
-          card.appendChild(starsDiv);
-      }
-
+      // מכניסים אותם לאותה שורה
+      nameRow.appendChild(nm);
+      nameRow.appendChild(starsDiv);
+      
+      // מכניסים את השורה לתוך העמודה
+      nameCol.appendChild(nameRow);
+      
       userPill.appendChild(nameCol);
       header.appendChild(userPill);
       card.appendChild(header);
@@ -1318,7 +1312,6 @@ function scheduleReadMoreCheck(body, btn, card) {
       readMoreBtn.style.display = "none";
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
-      // לוגיקת קרא עוד (ללא אנימציה)
       readMoreBtn.onclick = function (e) {
         e.stopPropagation();
         const wasExpanded = body.classList.contains("expanded");
