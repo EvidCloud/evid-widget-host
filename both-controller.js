@@ -1294,14 +1294,21 @@ function calcNeedsReadMore(body, card) {
 }
 
 function scheduleReadMoreCheck(el, btn, card) {
-      // 1. הסתרה כברירת מחדל
+      // 1. הסתרה כברירת מחדל כדי למנוע הבהוב
       btn.style.display = "none";
       
-      // 2. בדיקה חכמה לאחר רגע קט (כדי לתת לטקסט להסתדר)
+      // 2. בדיקה באמצעות הפונקציה המדויקת (calcNeedsReadMore) שקיימת בקובץ
+      // הפונקציה הזו יוצרת עותק נסתר ומודדת את הגובה האמיתי של הטקסט
       setTimeout(function() {
-        // בודק האם הטקסט באמת גולש (עם מרווח ביטחון של 5 פיקסלים)
-        if (el.scrollHeight > el.clientHeight + 5) {
-          btn.style.display = "block"; // מציג רק אם צריך
+        if (typeof calcNeedsReadMore === "function") {
+            if (calcNeedsReadMore(el, card)) {
+                btn.style.display = "block";
+            }
+        } else {
+            // גיבוי למקרה חירום (לא אמור לקרות)
+            if (el.scrollHeight > el.clientHeight + 5) {
+                btn.style.display = "block";
+            }
         }
       }, 100);
     }
