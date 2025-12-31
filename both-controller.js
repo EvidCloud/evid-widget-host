@@ -1247,13 +1247,11 @@ function calcNeedsReadMore(body, card) {
         const clampH = body.getBoundingClientRect().height;
         const w = Math.ceil(body.getBoundingClientRect().width);
 
-        // אם עדיין אין מידות טובות – fallback שמרני
         if (!clampH || w < 50) {
           const plain = normalizeSpaces(stripAllTags(body.textContent || ""));
           return plain.length > 75;
         }
 
-        // מודד טקסט "מורחב" בלי לשנות את האלמנט האמיתי
         const probe = document.createElement("div");
         probe.className = "review-text expanded";
         probe.style.position = "absolute";
@@ -1263,7 +1261,6 @@ function calcNeedsReadMore(body, card) {
         probe.style.visibility = "hidden";
         probe.style.pointerEvents = "none";
 
-        // שימוש באותו HTML
         probe.innerHTML = body.innerHTML;
         card.appendChild(probe);
         const fullH = probe.getBoundingClientRect().height;
@@ -1276,17 +1273,13 @@ function calcNeedsReadMore(body, card) {
     }
 
     function scheduleReadMoreCheck(el, btn, card) {
-      // 1. הסתרה כברירת מחדל
       btn.style.display = "none";
-      
-      // 2. בדיקה מושהית ומדויקת
       setTimeout(function() {
         if (typeof calcNeedsReadMore === "function") {
             if (calcNeedsReadMore(el, card)) {
                 btn.style.display = "block";
             }
         } else {
-            // גיבוי למקרה חירום
             if (el.scrollHeight > el.clientHeight + 5) {
                 btn.style.display = "block";
             }
@@ -1294,25 +1287,26 @@ function calcNeedsReadMore(body, card) {
       }, 100);
     }
 
-  run(); // מיידי
-
-  // עוד 2 frames (עוזר אחרי layout + paint)
-  requestAnimationFrame(() => {
-    run();
-    requestAnimationFrame(run);
-  });
-
-  // עוד קצת אחרי (פונטים/רוחב/אייקונים)
-  setTimeout(run, 200);
-  setTimeout(run, 800);
-
-  // וכשפונטים מוכנים
-  try {
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => setTimeout(run, 0));
+    // הפונקציה שהייתה חסרה וגרמה לשגיאות
+    function run() {
+      try { positionWrap(); } catch(_) {}
     }
-  } catch (_) {}
-}
+
+    run(); 
+
+    requestAnimationFrame(() => {
+      run();
+      requestAnimationFrame(run);
+    });
+    
+    setTimeout(run, 200);
+    setTimeout(run, 800);
+    
+    try {
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => setTimeout(run, 0));
+      }
+    } catch (_) {}
 
     /* =========================================
        8) RENDERERS
