@@ -68,6 +68,16 @@
   })();
 
   // ---------- Utils ----------
+   // אייקון גוגל לשימוש בכל העיצובים
+  const GOOGLE_ICON_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" style="margin-inline-start:6px; vertical-align:middle; background:white; border-radius:50%; padding:1px; box-shadow:0 1px 2px rgba(0,0,0,0.1);"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05"/><path d="M12 4.61c1.61 0 3.09.56 4.23 1.64l3.18-3.18C17.45 1.19 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>';
+
+  // המרת צבע לשקיפות
+  function hexToRgb(hex) {
+    hex = String(hex).replace(/^#/, "");
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    const num = parseInt(hex, 16);
+    return [num >> 16, (num >> 8) & 255, num & 255].join(",");
+  }
   function cleanFontValue(raw) {
     const v = String(raw || "").trim();
     const main = v.split(",")[0].replace(/['"]/g, "").trim();
@@ -224,7 +234,8 @@
       badgeText: "פידבק מהשטח",
 
       // IMPORTANT: default is Basic => semantic OFF unless enabled
-      semanticEnabled: false
+      semanticEnabled: false,
+       cardStyle: "default"
     };
 
     let markerSource = "default";
@@ -329,6 +340,10 @@
               DYNAMIC_SETTINGS.badgeText;
           }
 
+           // קריאת סגנון עיצוב
+          if (readAny(s, ["cardStyle", "style", "design"]) !== undefined) {
+             DYNAMIC_SETTINGS.cardStyle = String(readAny(s, ["cardStyle", "style", "design"])).toLowerCase().trim();
+          }
           // semanticEnabled (FireStore flags)
           const plan = String(readAny(s, ["plan", "tier"]) || "").toLowerCase().trim();
           const sem1 = readAny(s, ["semanticEnabled", "semantic", "isPro", "pro"]);
@@ -490,6 +505,8 @@
     const SIZE_MODE = (String(DYNAMIC_SETTINGS.size || "large").toLowerCase().trim() === "compact") ? "compact" : "large";
 
     const SEMANTIC_ENABLED = !!DYNAMIC_SETTINGS.semanticEnabled;
+     const CARD_STYLE = DYNAMIC_SETTINGS.cardStyle || "default";
+    const THEME_RGB = hexToRgb(THEME_COLOR) || "79, 70, 229";
 
     const DEFAULT_PRODUCT_IMG =
       (currentScript && currentScript.getAttribute("data-default-image")) ||
@@ -584,44 +601,62 @@
       + ":host{all:initial;}"
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
       + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
-      + ".card{position:relative;width:290px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:18px;border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 25px -8px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.04);padding:16px;overflow:hidden;pointer-events:auto;border-top:4px solid " + THEME_COLOR + ";transition:height .22s ease;}"
-      + ".card.compact{padding:14px 16px 14px 16px;}"
+      
+      // === Base Card ===
+      + ".card{position:relative;width:290px;max-width:90vw;background:#fff;padding:16px;pointer-events:auto;overflow:hidden;transition:none!important;height:auto;}"
+      
+      // === Animations ===
       + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
       + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
-      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(241,245,249,.5);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
+      
+      // === Common Elements ===
+      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
-      + "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}70%{box-shadow:0 0 0 4px rgba(79,70,229,0)}100%{box-shadow:0 0 0 0 rgba(79,70,229,0)}}"
-      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}"
-      + ".card.compact .review-header{margin-bottom:7px;}"
-      + ".user-pill{display:flex;align-items:center;gap:8px;}"
-      + ".review-avatar,.avatar-fallback{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 2px 5px rgba(0,0,0,.1);object-fit:cover;}"
-      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;letter-spacing:-.3px;}"
-      + ".rating-container{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #f1f5f9;padding:3px 6px;border-radius:6px;}"
-      + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;}"
-      + ".g-icon-svg{width:12px;height:12px;display:block;}"
-      + ".review-text{font-size:13px;line-height:1.4;color:#334155;font-weight:400;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
+      + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
+      + ".user-pill{display:flex;align-items:center;gap:10px;}"
+      + ".review-avatar,.avatar-fallback{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
+      + ".name-col{display:flex;flex-direction:column;}"
+      + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;}"
+      + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;display:flex;align-items:center;}"
+      + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
-      + ".read-more-btn{font-size:11px;color:#000000;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:6px;}"
-      + ".read-more-btn:hover{text-decoration:underline;}"
-      + ".smart-mark{background:linear-gradient(to bottom, transparent 65%, #fef08a 65%);color:#0f172a;font-weight:800;padding:0 1px;}"
-      + ".purchase-card{height:85px;padding:0;display:flex;flex-direction:row;gap:0;width:290px;}"
-      + ".course-img-wrapper{flex:0 0 85px;height:100%;position:relative;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;}"
-      + ".course-img{width:100%;height:100%;object-fit:cover;}"
-      + ".course-img.default-icon{object-fit:contain;padding:12px;}"
-      + ".p-content{flex-grow:1;padding:8px 12px;display:flex;flex-direction:column;justify-content:center;text-align:right;}"
-      + ".fomo-header{display:flex;justify-content:space-between;font-size:10px;color:#64748b;margin-bottom:2px;}"
-      + ".fomo-name{font-weight:700;color:#1e293b;}"
-      + ".fomo-body{font-size:12px;color:#334155;line-height:1.2;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
-      + ".product-highlight{font-weight:600;color:" + THEME_COLOR + ";}"
-      + ".fomo-footer-row{display:flex;align-items:center;gap:6px;font-size:10px;color:#ef4444;font-weight:600;}"
-      + ".pulsing-dot{width:5px;height:5px;background:#ef4444;border-radius:50%;display:inline-block;}"
-      + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;border-radius:12px}}";
-    root.appendChild(style);
+      + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
+
+      // === 1. DEFAULT ===
+      + ".card.style-default{border-radius:18px;box-shadow:0 8px 25px -8px rgba(0,0,0,.1);border-top:4px solid " + THEME_COLOR + ";}"
+      + ".card.style-default .read-more-btn{color:#000;}"
+
+      // === 2. FOREST (Dark Glass) ===
+      + ".card.style-forest{background:linear-gradient(145deg, rgba(" + THEME_RGB + ", 0.95), rgba(" + THEME_RGB + ", 0.85)); border:1px solid rgba(255,255,255,0.2); border-radius:20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); color:#fff;}"
+      + ".card.style-forest .reviewer-name{color:#fff;}"
+      + ".card.style-forest .review-text{color:rgba(255,255,255,0.9);}"
+      + ".card.style-forest .xbtn{background:rgba(255,255,255,0.2);color:#fff;}"
+      + ".card.style-forest .read-more-btn{color:#fff; opacity:0.9; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.5);}"
+
+      // === 3. LEAF (Organic) ===
+      + ".card.style-leaf{border-radius:24px 4px 24px 4px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1); border-right:4px solid " + THEME_COLOR + ";}"
+      + ".card.style-leaf .avatar-fallback{background:rgba(" + THEME_RGB + ", 0.15); color:" + THEME_COLOR + "; border:1px solid " + THEME_COLOR + ";}"
+      + ".card.style-leaf .reviewer-name{color:" + THEME_COLOR + ";}"
+      + ".card.style-leaf .read-more-btn{background:rgba(" + THEME_RGB + ", 0.1) !important; color:" + THEME_COLOR + "; padding:4px 12px; border-radius:20px; text-decoration:none; display:inline-block; transition:none;}"
+      + ".card.style-leaf .read-more-btn:hover{background:" + THEME_COLOR + "!important; color:#fff;}"
+
+      // === 4. EXECUTIVE (Brutalist) ===
+      + ".card.style-exec{border-radius:0px; border:2px solid " + THEME_COLOR + "; box-shadow:6px 6px 0px " + THEME_COLOR + ";}"
+      + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
+      + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
+      + ".card.style-exec .review-text{color:#000;}"
+      + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
+      
+      + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
+      + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
+      + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
+      + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
+      ;    root.appendChild(style);
 
     const wrap = document.createElement("div");
     wrap.className = "wrap";
@@ -1193,24 +1228,20 @@ function scheduleReadMoreCheck(body, btn, card) {
        ========================================= */
     function renderReviewCard(item) {
       const card = document.createElement("div");
-      card.className = "card review-card enter" + (SIZE_MODE === "compact" ? " compact" : "");
+      // הוספת הסטייל הנבחר (style-forest / style-leaf וכו')
+      card.className = "card review-card enter style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
 
       const x = document.createElement("button");
       x.className = "xbtn";
       x.textContent = "×";
-      x.onclick = function () {
-        handleDismiss();
-        try { card.remove(); } catch (_) {}
-      };
+      x.onclick = function () { handleDismiss(); try { card.remove(); } catch (_) {} };
       card.appendChild(x);
 
-      if (SIZE_MODE !== "compact" && BADGE_ENABLED) {
+      // באדג' רק בדיפולט
+      if (SIZE_MODE !== "compact" && BADGE_ENABLED && CARD_STYLE === "default") {
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
-        topBadge.innerHTML =
-          '<div class="modern-badge"><div class="pulse-dot"></div> ' +
-          escapeHTML(BADGE_TEXT) +
-          "</div>";
+        topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> ' + escapeHTML(BADGE_TEXT) + "</div>";
         card.appendChild(topBadge);
       }
 
@@ -1221,30 +1252,28 @@ function scheduleReadMoreCheck(body, btn, card) {
       userPill.className = "user-pill";
       userPill.appendChild(renderAvatarPreloaded(item.authorName, item.profilePhotoUrl));
 
+      const nameCol = document.createElement("div");
+      nameCol.className = "name-col";
+      
       const nm = document.createElement("span");
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
-      userPill.appendChild(nm);
+      
+      const starsDiv = document.createElement("div");
+      starsDiv.className = "stars";
+      starsDiv.innerHTML = "★★★★★";
+      // הוספת לוגו גוגל לכולם
+      starsDiv.innerHTML += GOOGLE_ICON_SVG;
+
+      nameCol.appendChild(nm);
+      nameCol.appendChild(starsDiv);
+      userPill.appendChild(nameCol);
 
       header.appendChild(userPill);
-
-      const ratingDiv = document.createElement("div");
-      ratingDiv.className = "rating-container";
-      ratingDiv.innerHTML = `
-        <svg class="g-icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05"/>
-          <path d="M12 4.61c1.61 0 3.09.56 4.23 1.64l3.18-3.18C17.45 1.19 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-        </svg>
-        <div class="stars">★★★★★</div>
-      `;
-      header.appendChild(ratingDiv);
       card.appendChild(header);
 
       const body = document.createElement("div");
       body.className = "review-text";
-
       const rawText = String(item.text || "");
       if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
       else body.textContent = normalizeSpaces(stripAllTags(rawText));
@@ -1253,30 +1282,22 @@ function scheduleReadMoreCheck(body, btn, card) {
       readMoreBtn.className = "read-more-btn";
       readMoreBtn.textContent = "קרא עוד...";
       readMoreBtn.style.display = "none";
-
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
+      // --- התיקון היציב (בלי אנימציה) למניעת קפיצות ---
       readMoreBtn.onclick = function (e) {
         e.stopPropagation();
         const wasExpanded = body.classList.contains("expanded");
-
-        // 1. מבטל בכוח אנימציות CSS (כדי למנוע החלקה לא רצויה)
         card.style.transition = "none";
         card.style.height = "auto";
 
         if (!wasExpanded) {
-          // --- פתיחה מיידית ---
           body.classList.add("expanded");
           readMoreBtn.textContent = "סגור";
-          
-          // לוגיקה של הווידג'ט (עצירת טיימר החלפה)
           pauseForReadMore();
         } else {
-          // --- סגירה מיידית ---
           body.classList.remove("expanded");
           readMoreBtn.textContent = "קרא עוד...";
-          
-          // לוגיקה של הווידג'ט (המשך טיימר החלפה)
           resumeFromReadMore();
         }
       };
@@ -1286,7 +1307,6 @@ function scheduleReadMoreCheck(body, btn, card) {
 
       return card;
     }
-
     function renderPurchaseCard(p) {
       const card = document.createElement("div");
       card.className = "card purchase-card enter";
