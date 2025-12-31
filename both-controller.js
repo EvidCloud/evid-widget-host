@@ -1,4 +1,4 @@
-/* both-controller v4.5.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -726,7 +726,7 @@ if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
       + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
-      + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
+      + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
       // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
       // 1. צבע הכוכבים תואם לצבע הראשי + ביטול מיקום אבסולוטי
       // 1. כוכבים בצבע שחור (#000000)
@@ -1294,16 +1294,17 @@ function calcNeedsReadMore(body, card) {
 }
 
 function scheduleReadMoreCheck(el, btn, card) {
-  // בדיקה חכמה: מחכים שהדפדפן יסיים לצייר את הטקסט
-  setTimeout(function() {
-    // אם הגובה המלא של הטקסט גדול מהגובה הנראה לעין (בתוספת סטייה קטנה)
-    if (el.scrollHeight > el.clientHeight + 2) {
-      btn.style.display = "block"; // תציג את הכפתור
-    } else {
-      btn.style.display = "none";  // תעלים אותו
+      // 1. הסתרה כברירת מחדל
+      btn.style.display = "none";
+      
+      // 2. בדיקה חכמה לאחר רגע קט (כדי לתת לטקסט להסתדר)
+      setTimeout(function() {
+        // בודק האם הטקסט באמת גולש (עם מרווח ביטחון של 5 פיקסלים)
+        if (el.scrollHeight > el.clientHeight + 5) {
+          btn.style.display = "block"; // מציג רק אם צריך
+        }
+      }, 100);
     }
-  }, 100); // השהייה של 100 מילישניות ליתר ביטחון
-}
 
   run(); // מיידי
 
