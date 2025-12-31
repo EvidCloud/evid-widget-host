@@ -1,4 +1,4 @@
-/* both-controller v4.4.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.4.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -615,16 +615,26 @@
       + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
       
-      // --- FIX: Marker Style (המרקר הצהוב) ---
+      // Marker Style
       + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
       
-      // --- FIX: Stars & Google Logo Location (צד שמאל למעלה, מתחת ל-X) ---
-      + ".stars{position:absolute; top:32px; left:16px; color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
-      
+      // --- LOGIC FOR STARS LOCATION ---
+      // 1. בסיס: עיצוב הכוכבים
+      + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
+      // 2. עיצוב ברירת מחדל: הכוכבים זורמים מתחת לשם (לא אבסולוטי)
+      + ".card.style-default .stars{ margin-top: 2px; }"
+      // 3. עיצובים חדשים: הכוכבים במיקום קבוע בצד שמאל למעלה
+      + ".card:not(.style-default) .stars{ position:absolute; top:32px; left:16px; }"
+
+      // Badge Style
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
       
+      // התאמת באדג' לעיצוב כהה (Forest)
+      + ".card.style-forest .modern-badge{background:rgba(255,255,255,0.15); color:#fff;}"
+      + ".card.style-forest .pulse-dot{background:#4ade80;}"
+
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
       + ".user-pill{display:flex;align-items:center;gap:10px;}"
       + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
@@ -635,39 +645,34 @@
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
 
-      // === 1. DEFAULT ===
+      // === STYLES CONFIG ===
       + ".card.style-default{border-radius:18px;box-shadow:0 8px 25px -8px rgba(0,0,0,.1);border-top:4px solid " + THEME_COLOR + ";}"
       + ".card.style-default .read-more-btn{color:#000;}"
 
-      // === 2. FOREST (Dark Glass) ===
       + ".card.style-forest{background:linear-gradient(145deg, rgba(" + THEME_RGB + ", 0.95), rgba(" + THEME_RGB + ", 0.85)); border:1px solid rgba(255,255,255,0.2); border-radius:20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); color:#fff;}"
       + ".card.style-forest .reviewer-name{color:#fff;}"
       + ".card.style-forest .review-text{color:rgba(255,255,255,0.9);}"
-      + ".card.style-forest .smart-mark{background-color:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4);}" /* מרקר מותאם לכהה */
+      + ".card.style-forest .smart-mark{background-color:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4);}" 
       + ".card.style-forest .xbtn{background:rgba(255,255,255,0.2);color:#fff;}"
       + ".card.style-forest .read-more-btn{color:#fff; opacity:0.9; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.5);}"
 
-      // === 3. LEAF (Organic) ===
       + ".card.style-leaf{border-radius:24px 4px 24px 4px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1); border-right:4px solid " + THEME_COLOR + ";}"
       + ".card.style-leaf .avatar-fallback{background:rgba(" + THEME_RGB + ", 0.15); color:" + THEME_COLOR + "; border:1px solid " + THEME_COLOR + ";}"
       + ".card.style-leaf .reviewer-name{color:" + THEME_COLOR + ";}"
       + ".card.style-leaf .read-more-btn{background:rgba(" + THEME_RGB + ", 0.1) !important; color:" + THEME_COLOR + "; padding:4px 12px; border-radius:20px; text-decoration:none; display:inline-block; transition:none;}"
       + ".card.style-leaf .read-more-btn:hover{background:" + THEME_COLOR + "!important; color:#fff;}"
 
-      // === 4. EXECUTIVE (Brutalist) ===
       + ".card.style-exec{border-radius:0px; border:2px solid " + THEME_COLOR + "; box-shadow:6px 6px 0px " + THEME_COLOR + ";}"
       + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
       + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
       
-      // === FIX: COMPACT MODE FOR ALL STYLES ===
-      // מקטין פונט, מקטין ריווח, ומעלים את הבאדג' אם קיים
       + ".card.compact { padding: 12px !important; width: 260px !important; }"
       + ".card.compact .review-text { font-size: 12px; line-height: 1.4; }"
       + ".card.compact .reviewer-name { font-size: 13px; }"
       + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 30px; height: 30px; font-size: 12px; }"
-      + ".card.compact .stars { top: 30px; font-size: 9px; }" /* התאמת מיקום כוכבים בקומפקט */
+      + ".card.compact .stars { top: 30px; font-size: 9px; }" 
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
@@ -1256,14 +1261,14 @@ function scheduleReadMoreCheck(body, btn, card) {
       x.onclick = function () { handleDismiss(); try { card.remove(); } catch (_) {} };
       card.appendChild(x);
       
-      // --- FIX: Stars & Google Logo (עצמאי, ממוקם אבסולוטית ב-CSS) ---
+      // יצירת הכוכבים
       const starsDiv = document.createElement("div");
       starsDiv.className = "stars";
       starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
-      card.appendChild(starsDiv); // הוספה ישירה לכרטיס כדי שהמיקום האבסולוטי יעבוד
 
-      // באדג' (רק בדיפולט ולא בקומפקט)
-      if (SIZE_MODE !== "compact" && BADGE_ENABLED && CARD_STYLE === "default") {
+      // באדג' (כותרת) - עכשיו עובד בכל העיצובים (רק לא בקומפקט)
+      // מחקנו את התנאי && CARD_STYLE === "default"
+      if (SIZE_MODE !== "compact" && BADGE_ENABLED) {
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
         topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> ' + escapeHTML(BADGE_TEXT) + "</div>";
@@ -1285,9 +1290,17 @@ function scheduleReadMoreCheck(body, btn, card) {
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
       
-      // הערה: הוצאנו את הכוכבים מכאן כדי שיהיו בצד שמאל
-
       nameCol.appendChild(nm);
+
+      // --- לוגיקת מיקום הכוכבים ---
+      if (CARD_STYLE === "default") {
+          // בעיצוב הרגיל: הכוכבים נכנסים לתוך העמודה של השם (מתחת לשם)
+          nameCol.appendChild(starsDiv);
+      } else {
+          // בעיצובים החדשים: הכוכבים מתווספים לכרטיס עצמו (כדי שיהיו במיקום אבסולוטי בצד)
+          card.appendChild(starsDiv);
+      }
+
       userPill.appendChild(nameCol);
       header.appendChild(userPill);
       card.appendChild(header);
