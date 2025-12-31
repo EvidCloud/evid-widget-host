@@ -614,15 +614,23 @@
       // === Common Elements ===
       + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
+      
+      // --- FIX: Marker Style (המרקר הצהוב) ---
+      + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
+      
+      // --- FIX: Stars & Google Logo Location (צד שמאל למעלה, מתחת ל-X) ---
+      + ".stars{position:absolute; top:32px; left:16px; color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
+      
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
+      
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
       + ".user-pill{display:flex;align-items:center;gap:10px;}"
-      + ".review-avatar,.avatar-fallback{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
-      + ".name-col{display:flex;flex-direction:column;}"
+      + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
+      + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
       + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;}"
-      + ".stars{color:#f59e0b;font-size:11px;letter-spacing:1px;display:flex;align-items:center;}"
+      
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
@@ -635,6 +643,7 @@
       + ".card.style-forest{background:linear-gradient(145deg, rgba(" + THEME_RGB + ", 0.95), rgba(" + THEME_RGB + ", 0.85)); border:1px solid rgba(255,255,255,0.2); border-radius:20px; box-shadow:0 8px 32px rgba(0,0,0,0.25); color:#fff;}"
       + ".card.style-forest .reviewer-name{color:#fff;}"
       + ".card.style-forest .review-text{color:rgba(255,255,255,0.9);}"
+      + ".card.style-forest .smart-mark{background-color:rgba(255,255,255,0.2); color:#fff; border:1px solid rgba(255,255,255,0.4);}" /* מרקר מותאם לכהה */
       + ".card.style-forest .xbtn{background:rgba(255,255,255,0.2);color:#fff;}"
       + ".card.style-forest .read-more-btn{color:#fff; opacity:0.9; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.5);}"
 
@@ -652,10 +661,19 @@
       + ".card.style-exec .review-text{color:#000;}"
       + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
       
+      // === FIX: COMPACT MODE FOR ALL STYLES ===
+      // מקטין פונט, מקטין ריווח, ומעלים את הבאדג' אם קיים
+      + ".card.compact { padding: 12px !important; width: 260px !important; }"
+      + ".card.compact .review-text { font-size: 12px; line-height: 1.4; }"
+      + ".card.compact .reviewer-name { font-size: 13px; }"
+      + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 30px; height: 30px; font-size: 12px; }"
+      + ".card.compact .stars { top: 30px; font-size: 9px; }" /* התאמת מיקום כוכבים בקומפקט */
+
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
+      ;
       ;    root.appendChild(style);
 
     const wrap = document.createElement("div");
@@ -1228,16 +1246,23 @@ function scheduleReadMoreCheck(body, btn, card) {
        ========================================= */
     function renderReviewCard(item) {
       const card = document.createElement("div");
-      // הוספת הסטייל הנבחר (style-forest / style-leaf וכו')
+      // הוספת הסטייל הנבחר
       card.className = "card review-card enter style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
 
+      // כפתור סגירה (X)
       const x = document.createElement("button");
       x.className = "xbtn";
       x.textContent = "×";
       x.onclick = function () { handleDismiss(); try { card.remove(); } catch (_) {} };
       card.appendChild(x);
+      
+      // --- FIX: Stars & Google Logo (עצמאי, ממוקם אבסולוטית ב-CSS) ---
+      const starsDiv = document.createElement("div");
+      starsDiv.className = "stars";
+      starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
+      card.appendChild(starsDiv); // הוספה ישירה לכרטיס כדי שהמיקום האבסולוטי יעבוד
 
-      // באדג' רק בדיפולט
+      // באדג' (רק בדיפולט ולא בקומפקט)
       if (SIZE_MODE !== "compact" && BADGE_ENABLED && CARD_STYLE === "default") {
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
@@ -1245,6 +1270,7 @@ function scheduleReadMoreCheck(body, btn, card) {
         card.appendChild(topBadge);
       }
 
+      // אזור עליון: תמונה ושם
       const header = document.createElement("div");
       header.className = "review-header";
 
@@ -1259,19 +1285,14 @@ function scheduleReadMoreCheck(body, btn, card) {
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
       
-      const starsDiv = document.createElement("div");
-      starsDiv.className = "stars";
-      starsDiv.innerHTML = "★★★★★";
-      // הוספת לוגו גוגל לכולם
-      starsDiv.innerHTML += GOOGLE_ICON_SVG;
+      // הערה: הוצאנו את הכוכבים מכאן כדי שיהיו בצד שמאל
 
       nameCol.appendChild(nm);
-      nameCol.appendChild(starsDiv);
       userPill.appendChild(nameCol);
-
       header.appendChild(userPill);
       card.appendChild(header);
 
+      // גוף הביקורת
       const body = document.createElement("div");
       body.className = "review-text";
       const rawText = String(item.text || "");
@@ -1284,7 +1305,7 @@ function scheduleReadMoreCheck(body, btn, card) {
       readMoreBtn.style.display = "none";
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
-      // --- התיקון היציב (בלי אנימציה) למניעת קפיצות ---
+      // לוגיקת קרא עוד (ללא אנימציה)
       readMoreBtn.onclick = function (e) {
         e.stopPropagation();
         const wasExpanded = body.classList.contains("expanded");
