@@ -1,4 +1,4 @@
-/* both-controller v4.5.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -652,6 +652,22 @@
          FINAL_BADGE_TEXT = BADGE_TEXT;
     }
     const style = document.createElement("style");
+     // === FIX: חישוב מחדש של שפה וכיוון ברגע האמת ===
+// 1. קריאת השפה העדכנית מההגדרות
+if (DYNAMIC_SETTINGS.lang === "en") {
+    CURR_LANG = "en";
+    T_DATA = DICT.en;
+} else {
+    CURR_LANG = "he";
+    T_DATA = DICT.he;
+}
+
+// 2. עדכון תרגום הבאדג' אם צריך
+if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
+     FINAL_BADGE_TEXT = BADGE_TRANSLATIONS[BADGE_TEXT];
+} else {
+     FINAL_BADGE_TEXT = BADGE_TEXT;
+}
     style.textContent =
       ""
       + ":host{all:initial;}"
@@ -717,7 +733,7 @@
       + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
       
       // 2. לוגו גוגל ללא רקע (שקוף) וללא שינוי צבע
-      + ".card.style-exec .stars svg { background: transparent !important; border-radius: 0; }"
+      + ".card.style-exec .stars svg { display: none !important; }"
       // === תיקון מצב קומפקטי (Compact) ===
       // 1. הקטנת שוליים ורווחים (פחות שטח לבן)
       + ".card.compact { padding: 8px 10px !important; width: 250px !important; min-height: auto; }"
@@ -1277,11 +1293,17 @@ function calcNeedsReadMore(body, card) {
   }
 }
 
-function scheduleReadMoreCheck(body, btn, card) {
-  const run = () => {
-    const should = calcNeedsReadMore(body, card);
-    btn.style.display = should ? "block" : "none";
-  };
+function scheduleReadMoreCheck(el, btn, card) {
+  // בדיקה חכמה: מחכים שהדפדפן יסיים לצייר את הטקסט
+  setTimeout(function() {
+    // אם הגובה המלא של הטקסט גדול מהגובה הנראה לעין (בתוספת סטייה קטנה)
+    if (el.scrollHeight > el.clientHeight + 2) {
+      btn.style.display = "block"; // תציג את הכפתור
+    } else {
+      btn.style.display = "none";  // תעלים אותו
+    }
+  }, 100); // השהייה של 100 מילישניות ליתר ביטחון
+}
 
   run(); // מיידי
 
