@@ -1,4 +1,4 @@
-/* both-controller v4.5.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -641,6 +641,16 @@
     /* =========================================
        5) STYLES + DOM
        ========================================= */
+     // === FIX: חישוב מחדש של השפה והכיוון (מונע קריסה באנגלית) ===
+    // אנחנו עושים את זה שוב כאן כדי לוודא שקראנו את ההגדרות העדכניות מהדשבורד
+    CURR_LANG = (DYNAMIC_SETTINGS.lang === "en") ? "en" : "he";
+    T_DATA = DICT[CURR_LANG];
+    
+    if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
+         FINAL_BADGE_TEXT = BADGE_TRANSLATIONS[BADGE_TEXT];
+    } else {
+         FINAL_BADGE_TEXT = BADGE_TEXT;
+    }
     const style = document.createElement("style");
     style.textContent =
       ""
@@ -703,10 +713,11 @@
       + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; display:block; margin-top:12px;}"
       // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
       // 1. צבע הכוכבים תואם לצבע הראשי + ביטול מיקום אבסולוטי
-      + ".card.style-exec .stars { position: static; margin-top: 4px; color: " + THEME_COLOR + "; }"
+      // 1. כוכבים בצבע שחור (#000000)
+      + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
       
-      // 2. רקע הלוגו של גוגל תואם לצבע הראשי
-      + ".card.style-exec .stars svg { background: " + THEME_COLOR + " !important; border-radius: 50%; }"
+      // 2. לוגו גוגל ללא רקע (שקוף) וללא שינוי צבע
+      + ".card.style-exec .stars svg { background: transparent !important; border-radius: 0; }"
       // === תיקון מצב קומפקטי (Compact) ===
       // 1. הקטנת שוליים ורווחים (פחות שטח לבן)
       + ".card.compact { padding: 8px 10px !important; width: 250px !important; min-height: auto; }"
