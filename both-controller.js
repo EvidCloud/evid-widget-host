@@ -1,4 +1,4 @@
-/* both-controller v4.4.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.5.1 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -117,12 +117,16 @@
       const d = new Date(ts);
       const diff = Math.max(0, (Date.now() - d.getTime()) / 1000);
       const m = Math.floor(diff / 60),
-        h = Math.floor(m / 60),
-        d2 = Math.floor(h / 24);
-      if (d2 > 0) return d2 === 1 ? "אתמול" : "לפני " + d2 + " ימים";
-      if (h > 0) return "לפני " + h + " שעות";
-      if (m > 0) return "לפני " + m + " דקות";
-      return "כרגע";
+            h = Math.floor(m / 60),
+            d2 = Math.floor(h / 24);
+      
+      // שימוש במילון
+      const _t = DICT[DYNAMIC_SETTINGS.lang === 'en' ? 'en' : 'he'];
+
+      if (d2 > 0) return d2 === 1 ? _t.yesterday : _t.ago(d2, _t.units.d);
+      if (h > 0) return _t.ago(h, _t.units.h);
+      if (m > 0) return _t.ago(m, _t.units.m);
+      return _t.justNow;
     } catch (_) {
       return "";
     }
@@ -218,10 +222,11 @@
       root = hostEl;
     }
 
-    /* =========================================
-       3) SETTINGS
+   /* =========================================
+       3) SETTINGS & TRANSLATIONS
        ========================================= */
     const DYNAMIC_SETTINGS = {
+      lang: "he", // ברירת מחדל
       color: "#4f46e5",
       font: "Rubik",
       position: "bottom-right",
@@ -232,10 +237,41 @@
       size: "large",
       badge: true,
       badgeText: "פידבק מהשטח",
-
-      // IMPORTANT: default is Basic => semantic OFF unless enabled
       semanticEnabled: false,
-       cardStyle: "default"
+      cardStyle: "default"
+    };
+
+    // מילון תרגומים - חובה להוסיף את זה כאן
+    const DICT = {
+      he: {
+        dir: "rtl",
+        align: "right",
+        oppAlign: "left",
+        readMore: "קרא עוד...",
+        close: "סגור",
+        ago: (val, unit) => `לפני ${val} ${unit}`,
+        justNow: "כרגע",
+        yesterday: "אתמול",
+        units: { d: "ימים", h: "שעות", m: "דקות" }
+      },
+      en: {
+        dir: "ltr",
+        align: "left",
+        oppAlign: "right",
+        readMore: "Read more...",
+        close: "Close",
+        ago: (val, unit) => `${val} ${unit} ago`,
+        justNow: "Just now",
+        yesterday: "Yesterday",
+        units: { d: "days", h: "hours", m: "minutes" }
+      }
+    };
+    
+    const BADGE_TRANSLATIONS = {
+      "פידבק מהשטח": "Feedback from customers",
+      "הפרגונים שלכם": "Your compliments",
+      "המחמאות שקיבלנו": "The praise we got",
+      "מה כתבתם עלינו": "What you wrote about us"
     };
 
     let markerSource = "default";
@@ -271,6 +307,10 @@
           const data = docSnap.data() || {};
           const s = (data.settings && typeof data.settings === "object") ? data.settings : data;
 
+           // lang
+          if (readAny(s, ["lang", "language"]) !== undefined) {
+            DYNAMIC_SETTINGS.lang = String(readAny(s, ["lang", "language"])).toLowerCase().trim();
+          }
           // color
           if (readAny(s, ["color", "primaryColor", "themeColor"]) !== undefined) {
             colorFromFirestorePresent = true;
@@ -506,6 +546,15 @@
 
     const SEMANTIC_ENABLED = !!DYNAMIC_SETTINGS.semanticEnabled;
      const CARD_STYLE = DYNAMIC_SETTINGS.cardStyle || "default";
+     // חישוב נתונים לשפה
+    const CURR_LANG = (DYNAMIC_SETTINGS.lang === "en") ? "en" : "he";
+    const T_DATA = DICT[CURR_LANG];
+    
+    // תרגום באדג' אם צריך
+    let FINAL_BADGE_TEXT = BADGE_TEXT;
+    if (CURR_LANG === "en" && BADGE_TRANSLATIONS[BADGE_TEXT]) {
+        FINAL_BADGE_TEXT = BADGE_TRANSLATIONS[BADGE_TEXT];
+    }
     const THEME_RGB = hexToRgb(THEME_COLOR) || "79, 70, 229";
 
     const DEFAULT_PRODUCT_IMG =
@@ -600,47 +649,40 @@
       ""
       + ":host{all:initial;}"
       + ":host, :host *, .wrap, .wrap *{font-family:'" + SELECTED_FONT + "',sans-serif !important;box-sizing:border-box;}"
-      + ".wrap{position:fixed;z-index:2147483000;direction:rtl;pointer-events:none;display:block;}"
+      // כיוון דינמי (RTL/LTR) ויישור טקסט לפי השפה
+      + ".wrap{position:fixed;z-index:2147483000;direction:" + T_DATA.dir + ";pointer-events:none;display:block;text-align:" + T_DATA.align + ";}"
       
-      // === Base Card ===
       + ".card{position:relative;width:290px;max-width:90vw;background:#fff;padding:16px;pointer-events:auto;overflow:hidden;transition:none!important;height:auto;}"
       
-      // === Animations ===
       + ".enter{animation:slideInUp .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
       + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
       
-      // === Common Elements ===
-      + ".xbtn{position:absolute;top:8px;left:8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
+      // כפתור ה-X: המיקום שלו נקבע לפי הצד הנגדי לשפה (oppAlign)
+      + ".xbtn{position:absolute;top:8px;" + T_DATA.oppAlign + ":8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
       + ".card:hover .xbtn{opacity:1;}"
       
       + ".smart-mark{background-color:#fef08a;color:#854d0e;padding:0 2px;border-radius:2px;font-weight:500;}"
       
-      // Badge
-      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:12px;width:100%;}"
+      // הכוכבים: בעיצובים החדשים הם בצד הנגדי (oppAlign)
+      + ".stars{position:absolute; top:32px; " + T_DATA.oppAlign + ":16px; color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
+      
+      + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;width:100%;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
       + ".card.style-forest .modern-badge{background:rgba(255,255,255,0.15); color:#fff;}"
       + ".card.style-forest .pulse-dot{background:#4ade80;}"
 
-      // === HEADER LAYOUT (התיקון לריווח) ===
-      // space-between מבטיח שהאלמנט הראשון ילך לימין והשני לשמאל (ב-RTL)
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
-      
-      // user-pill מחזיק רק את התמונה והשם ביחד בצד ימין
       + ".user-pill{display:flex;align-items:center;gap:10px;}"
       + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
       + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
       + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;white-space:nowrap;}"
       
-      // stars הולך לצד שמאל לבד
-      + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; margin:0; padding:0; line-height:1;}"
-
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
       + ".review-text.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}"
       + ".read-more-btn{font-size:11px;font-weight:700;cursor:pointer;background:transparent!important;border:none;padding:0;outline:none!important;margin-top:10px;text-decoration:underline;}"
-
       // === STYLES ===
       + ".card.style-default{border-radius:18px;box-shadow:0 8px 25px -8px rgba(0,0,0,.1);border-top:4px solid " + THEME_COLOR + ";}"
       + ".card.style-default .read-more-btn{color:#000;}"
@@ -1259,7 +1301,7 @@ function scheduleReadMoreCheck(body, btn, card) {
       if (SIZE_MODE !== "compact" && BADGE_ENABLED) {
         const topBadge = document.createElement("div");
         topBadge.className = "top-badge-container";
-        topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> ' + escapeHTML(BADGE_TEXT) + "</div>";
+        topBadge.innerHTML = '<div class="modern-badge"><div class="pulse-dot"></div> ' + escapeHTML(FINAL_BADGE_TEXT) + "</div>";
         card.appendChild(topBadge);
       }
 
@@ -1301,23 +1343,19 @@ function scheduleReadMoreCheck(body, btn, card) {
 
       const readMoreBtn = document.createElement("button");
       readMoreBtn.className = "read-more-btn";
-      readMoreBtn.textContent = "קרא עוד...";
-      readMoreBtn.style.display = "none";
-      scheduleReadMoreCheck(body, readMoreBtn, card);
+      readMoreBtn.textContent = T_DATA.readMore; // שימוש בתרגום
+      
+      // ... (המשך קוד) ...
 
       readMoreBtn.onclick = function (e) {
-        e.stopPropagation();
-        const wasExpanded = body.classList.contains("expanded");
-        card.style.transition = "none";
-        card.style.height = "auto";
-
+        // ...
         if (!wasExpanded) {
           body.classList.add("expanded");
-          readMoreBtn.textContent = "סגור";
+          readMoreBtn.textContent = T_DATA.close; // שימוש בתרגום
           pauseForReadMore();
         } else {
           body.classList.remove("expanded");
-          readMoreBtn.textContent = "קרא עוד...";
+          readMoreBtn.textContent = T_DATA.readMore; // שימוש בתרגום
           resumeFromReadMore();
         }
       };
