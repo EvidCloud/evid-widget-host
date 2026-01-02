@@ -1,4 +1,4 @@
-/* both-controller v4.6.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -672,6 +672,7 @@
       + ".leave{animation:slideOutDown .6s cubic-bezier(.34,1.56,.64,1) forwards;}"
       + "@keyframes slideInUp{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}"
       + "@keyframes slideOutDown{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(30px)}}"
+      + "@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(" + THEME_RGB + ", 0.7);}70%{box-shadow:0 0 0 6px rgba(" + THEME_RGB + ", 0);}100%{box-shadow:0 0 0 0 rgba(" + THEME_RGB + ", 0);}}"
       
       // X Button
       + ".xbtn{position:absolute;top:8px;" + T_DATA.oppAlign + ":8px;width:18px;height:18px;background:rgba(0,0,0,0.05);border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;font-size:10px;z-index:20;opacity:0;transition:opacity .2s;}"
@@ -681,8 +682,7 @@
       
       // === תיקון כוכבים קריטי ===
       // אנחנו משתמשים ב-oppAlign (הצד הנגדי) כדי למקם אותם
-      + ".stars{position:absolute; top:32px; " + T_DATA.oppAlign + ":16px; color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5;}"
-      
+      + ".stars{color:#f59e0b; font-size:10px; letter-spacing:1px; display:flex; align-items:center; gap:4px; z-index:5; flex-shrink:0;}"      
       + ".top-badge-container{display:flex;justify-content:flex-start;margin-bottom:10px;width:100%;}"
       + ".modern-badge{font-size:10px;font-weight:700;color:" + THEME_COLOR + ";background:#eef2ff;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:5px;letter-spacing:.3px;}"
       + ".pulse-dot{width:5px;height:5px;background:" + THEME_COLOR + ";border-radius:50%;animation:pulse 2s infinite;}"
@@ -1371,14 +1371,21 @@ function calcNeedsReadMore(body, card) {
 
       // מכניסים ל-Header: הראשון ילך לימין, השני לשמאל
       header.appendChild(userPill);
-      // לוגיקה ייחודית לעיצוב Executive: הכוכבים נכנסים מתחת לשם
+      // === תיקון מיקום כוכבים (Exec / Compact / Large) ===
       if (CARD_STYLE === 'exec') {
-          // מבטל את הריווח האוטומטי של ה-Flex בשורה הזו כדי שהם יהיו צמודים
+          // 1. Executive: נשאר כמו שהיה (מתחת לשם)
           nameCol.style.display = "flex";
           nameCol.style.flexDirection = "column";
           nameCol.appendChild(starsDiv);
+
+      } else if (SIZE_MODE === 'compact') {
+          // 2. Compact: נכנס ישירות לכרטיס (לא לכותרת)
+          // זה שומר על העיצוב הנוכחי שאתה אוהב בקומפקט ומאפשר ל-CSS למקם אותו
+          card.appendChild(starsDiv);
+
       } else {
-          // בשאר העיצובים: מיקום אבסולוטי/צדדי
+          // 3. Large (הרגיל): נכנס לתוך הכותרת
+          // זה מה שמיישר אותו בול מול השם (Flexbox)
           header.appendChild(starsDiv);
       }
       
