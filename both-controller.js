@@ -1,4 +1,4 @@
-/* both-controller v4.6.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -725,18 +725,28 @@
       
       // 2. לוגו גוגל ללא רקע (שקוף) וללא שינוי צבע
       + ".card.style-exec .stars svg { display: none !important; }"
-      // === תיקון מצב קומפקטי (Compact) ===
-      // 1. הקטנת שוליים ורווחים (פחות שטח לבן)
-      + ".card.compact { padding: 8px 10px !important; width: 250px !important; min-height: auto; }"
-      + ".card.compact .review-header { margin-bottom: 6px; }" 
+      // === תיקון מצב קומפקטי (Compact) - פיתרון פרפקט ===
+      + ".card.compact { padding: 10px 12px !important; width: 260px !important; min-height: auto; }"
       
-      // 2. התאמת גודל טקסט ואווטאר
-      + ".card.compact .review-text { font-size: 11.5px; line-height: 1.35; margin-top: 2px; }"
-      + ".card.compact .reviewer-name { font-size: 12.5px; }"
-      + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 26px; height: 26px; font-size: 11px; }"
+      // יישור הכותרת - קריטי ליישור כוכבים מול שם
+      + ".card.compact .review-header { margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }" 
       
-      // 3. החזרת הכוכבים והלוגו! (ביטול הסתרה + ביטול מיקום אבסולוטי כדי שייכנסו בשורה)
-      + ".card.compact .stars { display: flex !important; position: static !important; transform: scale(0.85); margin: 0; }"
+      // הגנה על השם שלא ישבור שורה וידרוס את הכוכבים
+      + ".card.compact .user-pill { flex: 1; min-width: 0; overflow: hidden; }"
+      + ".card.compact .name-col { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }"
+      + ".card.compact .reviewer-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }"
+      
+      // טקסט הביקורת
+      + ".card.compact .review-text { font-size: 12px; line-height: 1.35; margin-top: 2px; }"
+      
+      // הקטנת אווטאר
+      + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 24px; height: 24px; font-size: 10px; }"
+      
+      // === הכוכבים בקומפקט ===
+      // ביטלנו את ה-scale שדופק יישור. במקום זה הקטנו פונט.
+      // margin-inline-start דואג לרווח מהשם בהתאם לשפה (RTL/LTR)
+      + ".card.compact .stars { display: flex !important; position: static !important; font-size: 9px !important; gap: 2px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
+      + ".card.compact .stars svg { width: 10px; height: 10px; }"
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
@@ -1371,21 +1381,18 @@ function calcNeedsReadMore(body, card) {
 
       // מכניסים ל-Header: הראשון ילך לימין, השני לשמאל
       header.appendChild(userPill);
-      // === תיקון מיקום כוכבים (Exec / Compact / Large) ===
+     // === מיקום כוכבים ולוגו (פיתרון אחיד ומושלם) ===
       if (CARD_STYLE === 'exec') {
-          // 1. Executive: נשאר כמו שהיה (מתחת לשם)
+          // 1. Executive: סגנון מיוחד - הכוכבים מתחת לשם
           nameCol.style.display = "flex";
           nameCol.style.flexDirection = "column";
           nameCol.appendChild(starsDiv);
-
-      } else if (SIZE_MODE === 'compact') {
-          // 2. Compact: נכנס ישירות לכרטיס (לא לכותרת)
-          // זה שומר על העיצוב הנוכחי שאתה אוהב בקומפקט ומאפשר ל-CSS למקם אותו
-          card.appendChild(starsDiv);
-
       } else {
-          // 3. Large (הרגיל): נכנס לתוך הכותרת
-          // זה מה שמיישר אותו בול מול השם (Flexbox)
+          // 2. Large & Compact (Default/Forest/Leaf)
+          // אנחנו מכניסים את הכוכבים לתוך ה-Header!
+          // בגלל שה-Header הוא Flexbox עם justify-content: space-between:
+          // ב-RTL: שם מימין, כוכבים משמאל.
+          // ב-LTR: שם משמאל, כוכבים מימין.
           header.appendChild(starsDiv);
       }
       
