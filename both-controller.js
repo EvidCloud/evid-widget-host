@@ -1,4 +1,4 @@
-/* both-controller v4.5.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1280,28 +1280,28 @@ function calcNeedsReadMore(body, card) {
     }
 
     function scheduleReadMoreCheck(el, btn, card) {
-      // 1. איפוס: הסתרה מיידית
+      // 1. קודם כל נסתיר, כדי לא להראות סתם
       btn.style.display = "none";
 
-      // 2. פילטר בטיחות: אם הטקסט קצר מ-100 תווים, אין סיכוי שצריך כפתור. צא מיד.
-      const len = (el.textContent || "").length;
-      if (len < 100) return; 
-
-      // 3. בדיקה מדויקת
+      // 2. נמתין שהדפדפן יסיים לצייר את הטקסט ואז נמדוד פיקסלים
       setTimeout(function() {
-        // בודק האם העיצוב הוא 'exec' ומתאים את סוג התצוגה
+        // קובעים את סוג התצוגה לפי העיצוב (באקזקיוטיב זה בלוק, באחרים זה בשורה)
         const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
         
+        // בדיקה 1: הפונקציה המדויקת (שכבר קיימת אצלך בקוד)
         if (typeof calcNeedsReadMore === "function") {
             if (calcNeedsReadMore(el, card)) {
                 btn.style.display = displayType;
+                return; // מצאנו שיש חריגה, סיימנו
             }
-        } else {
-            if (el.scrollHeight > el.clientHeight + 5) {
-                btn.style.display = displayType;
-            }
+        } 
+        
+        // בדיקה 2: גיבוי (בדיקת גלילה רגילה)
+        // אם גובה התוכן (scrollHeight) גדול מהגובה הנראה (clientHeight)
+        if (el.scrollHeight > el.clientHeight + 2) {
+            btn.style.display = displayType;
         }
-      }, 100);
+      }, 50); // טיימר קצרצר של 50ms מספיק כדי לקבל מידות מדויקות
     }
 
     // הפונקציה שהייתה חסרה וגרמה לשגיאות
