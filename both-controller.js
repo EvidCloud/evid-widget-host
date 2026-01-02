@@ -543,6 +543,14 @@
     const SEMANTIC_ENABLED = !!DYNAMIC_SETTINGS.semanticEnabled;
      const CARD_STYLE = DYNAMIC_SETTINGS.cardStyle || "default";
     const THEME_RGB = hexToRgb(THEME_COLOR) || "79, 70, 229";
+     // === FIX: Missing Dictionary for English Badge ===
+    const BADGE_TRANSLATIONS = {
+      "פידבק מהשטח": "Real Customer Feedback",
+      "הפרגונים שלכם": "Your Kind Words",
+      "המחמאות שקיבלנו": "Wall of Love",
+      "מה כתבתם עלינו": "What People Say",
+      "": ""
+    };
 
     // === תיקון: עדכון המשתנים הגלובליים (בלי const) ===
     CURR_LANG = (DYNAMIC_SETTINGS.lang === "en") ? "en" : "he";
