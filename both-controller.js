@@ -710,8 +710,7 @@
       + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
-      + ".card.style-exec .read-more-btn{background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
-      // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
++ ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"      // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
       // 1. צבע הכוכבים תואם לצבע הראשי + ביטול מיקום אבסולוטי
       // 1. כוכבים בצבע שחור (#000000)
       + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
@@ -1273,15 +1272,25 @@ function calcNeedsReadMore(body, card) {
     }
 
     function scheduleReadMoreCheck(el, btn, card) {
+      // 1. איפוס: הסתרה מיידית
       btn.style.display = "none";
+
+      // 2. פילטר בטיחות: אם הטקסט קצר מ-100 תווים, אין סיכוי שצריך כפתור. צא מיד.
+      const len = (el.textContent || "").length;
+      if (len < 100) return; 
+
+      // 3. בדיקה מדויקת
       setTimeout(function() {
+        // בודק האם העיצוב הוא 'exec' ומתאים את סוג התצוגה
+        const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
+        
         if (typeof calcNeedsReadMore === "function") {
             if (calcNeedsReadMore(el, card)) {
-                btn.style.display = "block";
+                btn.style.display = displayType;
             }
         } else {
             if (el.scrollHeight > el.clientHeight + 5) {
-                btn.style.display = "block";
+                btn.style.display = displayType;
             }
         }
       }, 100);
@@ -1400,6 +1409,8 @@ function calcNeedsReadMore(body, card) {
 
       card.appendChild(body);
       card.appendChild(readMoreBtn);
+       // מפעיל את הבדיקה החכמה מיד ביצירת הכרטיס
+      scheduleReadMoreCheck(body, readMoreBtn, card);
 
       return card;
     }
