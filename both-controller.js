@@ -1,4 +1,4 @@
-/* both-controller v4.6.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -430,6 +430,11 @@
 
     // ---- <script data-*> overrides ----
     try {
+       // קריאת שפה מהסקריפט (כדי שהתצוגה המקדימה תתעדכן מיד)
+      const langAttr = pickAttr("data-lang");
+      if (langAttr) {
+        DYNAMIC_SETTINGS.lang = langAttr.toLowerCase().trim();
+      }
       if (!colorFromFirestorePresent) {
         const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
         if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
