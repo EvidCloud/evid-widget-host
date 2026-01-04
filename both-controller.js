@@ -1,4 +1,4 @@
-/* both-controller v4.6.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -435,29 +435,23 @@
       if (langAttr) {
         DYNAMIC_SETTINGS.lang = langAttr.toLowerCase().trim();
       }
-      if (!colorFromFirestorePresent) {
-        const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
-        if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
-      }
+      // === הגדרות ויזואליות (פתוחות לשינוי מהדשבורד) ===
+      
+      const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
+      if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
 
-      if (!fontFromFirestorePresent) {
-        const f = cleanFontValue(pickAttr("data-font"));
-        if (f) { DYNAMIC_SETTINGS.font = f; visualSource = "attr"; }
-      }
+      const f = cleanFontValue(pickAttr("data-font"));
+      if (f) { DYNAMIC_SETTINGS.font = f; visualSource = "attr"; }
 
-      if (!positionFromFirestorePresent) {
-        const p = pickAttr("data-position");
-        if (p) { DYNAMIC_SETTINGS.position = p; visualSource = "attr"; }
-      }
+      const p = pickAttr("data-position");
+      if (p) { DYNAMIC_SETTINGS.position = p; visualSource = "attr"; }
 
-      if (!delayFromFirestorePresent) {
-        const ds = pickAttr("data-delay-seconds", "data-delay", "data-init-delay-ms");
-        if (ds) {
-          const n = Number(ds);
-          if (Number.isFinite(n)) {
-            DYNAMIC_SETTINGS.delay = n > 50 ? n : n * 1000;
-            visualSource = "attr";
-          }
+      const ds = pickAttr("data-delay-seconds", "data-delay", "data-init-delay-ms");
+      if (ds) {
+        const n = Number(ds);
+        if (Number.isFinite(n)) {
+          DYNAMIC_SETTINGS.delay = n > 50 ? n : n * 1000;
+          visualSource = "attr";
         }
       }
 
