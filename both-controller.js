@@ -1,4 +1,4 @@
-/* both-controller v4.6.7 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.6.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -430,25 +430,29 @@
 
     // ---- <script data-*> overrides ----
     try {
-       // קריאת שפה מהסקריפט (כדי שהתצוגה המקדימה תתעדכן מיד)
+      // קריאת שפה
       const langAttr = pickAttr("data-lang");
-      if (langAttr) {
-        DYNAMIC_SETTINGS.lang = langAttr.toLowerCase().trim();
-      }
-      // === הגדרות ויזואליות (פתוחות לשינוי מהדשבורד) ===
+      if (langAttr) DYNAMIC_SETTINGS.lang = langAttr.toLowerCase().trim();
+
+      // === ביטול חסימות: קריאת עיצוב, צבע ופונט תמיד (לטובת התצוגה המקדימה) ===
       
+      // 1. צבע ראשי
       const c = pickAttr("data-primary-color", "data-color", "data-theme-color");
       if (c) { DYNAMIC_SETTINGS.color = c; visualSource = "attr"; }
-       // === הוספנו את זה: קריאת סגנון העיצוב ===
+
+      // 2. סגנון עיצוב (מודרני/יער וכו') - חובה כדי שהעיצובים יעבדו!
       const st = pickAttr("data-card-style", "data-style");
       if (st) { DYNAMIC_SETTINGS.cardStyle = st; visualSource = "attr"; }
 
+      // 3. פונט
       const f = cleanFontValue(pickAttr("data-font"));
       if (f) { DYNAMIC_SETTINGS.font = f; visualSource = "attr"; }
 
+      // 4. מיקום
       const p = pickAttr("data-position");
       if (p) { DYNAMIC_SETTINGS.position = p; visualSource = "attr"; }
 
+      // 5. דיליי
       const ds = pickAttr("data-delay-seconds", "data-delay", "data-init-delay-ms");
       if (ds) {
         const n = Number(ds);
@@ -457,6 +461,8 @@
           visualSource = "attr";
         }
       }
+
+    } catch (e) { console.warn("Overrides error:", e); }
 
       if (!badgeFromFirestorePresent) {
         const bRaw = pickAttr("data-badge");
