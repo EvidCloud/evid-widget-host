@@ -428,7 +428,7 @@
       console.warn("EVID: Could not load settings from Firestore, using defaults.", e);
     }
 
-    // ---- <script data-*> overrides ----
+   // ---- <script data-*> overrides ----
     try {
       // קריאת שפה
       const langAttr = pickAttr("data-lang");
@@ -462,8 +462,7 @@
         }
       }
 
-    } catch (e) { console.warn("Overrides error:", e); }
-
+      // 6. Badge (הוספתי את זה לתוך ה-TRY הראשי כדי למנוע את השגיאה)
       if (!badgeFromFirestorePresent) {
         const bRaw = pickAttr("data-badge");
         const b = parseBoolRaw(bRaw);
@@ -475,11 +474,13 @@
         }
       }
 
+      // 7. Badge Text
       if (!badgeTextFromFirestorePresent) {
         const bt = pickAttr("data-badge-text");
         if (bt) DYNAMIC_SETTINGS.badgeText = bt;
       }
-    } catch (_) {}
+
+    } catch (e) { console.warn("Overrides error:", e); }
 
     // marker fallback
     try {
