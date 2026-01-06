@@ -733,7 +733,7 @@
       + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
       
       // 2. לוגו גוגל ללא רקע (שקוף) וללא שינוי צבע
-      + ".card.style-exec .stars svg { display: none !important; }"
+      + ".card.style-exec .stars svg { display: inline-block !important; margin-inline-start: 6px; vertical-align: middle; } }"
       // === תיקון מצב קומפקטי (Compact) - פיתרון פרפקט ===
       + ".card.compact { padding: 10px 12px !important; width: 260px !important; min-height: auto; }"
       
@@ -754,8 +754,9 @@
       // === הכוכבים בקומפקט ===
       // ביטלנו את ה-scale שדופק יישור. במקום זה הקטנו פונט.
       // margin-inline-start דואג לרווח מהשם בהתאם לשפה (RTL/LTR)
-      + ".card.compact .stars { display: flex !important; position: static !important; font-size: 9px !important; gap: 2px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
-      + ".card.compact .stars svg { width: 10px; height: 10px; }"
+      + "/* שינינו את font-size ל-12px ואת הרווח ל-3px */
+.card.compact .stars { display: flex !important; position: static !important; font-size: 12px !important; gap: 3px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
+      + ".card.compact .stars svg { width: 13px; height: 13px; }"
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
