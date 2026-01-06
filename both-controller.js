@@ -1,4 +1,4 @@
-/* both-controller v4.6.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.7.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1292,7 +1292,8 @@ function calcNeedsReadMore(body, card) {
         const fullH = probe.getBoundingClientRect().height;
         card.removeChild(probe);
 
-        return fullH > clampH + 2;
+        // שינינו מ-2 ל-10 כדי למנוע כפתור מיותר כשהטקסט גבולי
+return fullH > clampH + 10;
       } catch (_) {
         return true;
       }
@@ -1317,7 +1318,7 @@ function calcNeedsReadMore(body, card) {
         
         // בדיקה 2: גיבוי (בדיקת גלילה רגילה)
         // אם גובה התוכן (scrollHeight) גדול מהגובה הנראה (clientHeight)
-        if (el.scrollHeight > el.clientHeight + 2) {
+        if (el.scrollHeight > el.clientHeight + 10) {
             btn.style.display = displayType;
         }
       }, 50); // טיימר קצרצר של 50ms מספיק כדי לקבל מידות מדויקות
