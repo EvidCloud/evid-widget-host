@@ -727,35 +727,27 @@
       + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
-+ ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"      // === תיקון ספציפי ל-Executive (כוכבים ולוגו) ===
-      // 1. צבע הכוכבים תואם לצבע הראשי + ביטול מיקום אבסולוטי
-      // 1. כוכבים בצבע שחור (#000000)
-      + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
++ ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
       
-      // 2. לוגו גוגל ללא רקע (שקוף) וללא שינוי צבע
-      + ".card.style-exec .stars svg { display: inline-block !important; margin-inline-start: 6px; vertical-align: middle; } }"
-      // === תיקון מצב קומפקטי (Compact) - פיתרון פרפקט ===
+      // === Executive Style Fixes ===
+      + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
+      + ".card.style-exec .stars svg { display: inline-block !important; margin-inline-start: 6px; vertical-align: middle; }"
+
+      // === Compact Mode Fixes ===
       + ".card.compact { padding: 10px 12px !important; width: 260px !important; min-height: auto; }"
       
-      // יישור הכותרת - קריטי ליישור כוכבים מול שם
-      + ".card.compact .review-header { margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }" 
+      + ".card.compact .review-header { margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }"
       
-      // הגנה על השם שלא ישבור שורה וידרוס את הכוכבים
       + ".card.compact .user-pill { flex: 1; min-width: 0; overflow: hidden; }"
       + ".card.compact .name-col { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }"
       + ".card.compact .reviewer-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }"
       
-      // טקסט הביקורת
       + ".card.compact .review-text { font-size: 12px; line-height: 1.35; margin-top: 2px; }"
       
-      // הקטנת אווטאר
       + ".card.compact .avatar-fallback, .card.compact .review-avatar { width: 24px; height: 24px; font-size: 10px; }"
       
-      // === הכוכבים בקומפקט ===
-      // ביטלנו את ה-scale שדופק יישור. במקום זה הקטנו פונט.
-      // margin-inline-start דואג לרווח מהשם בהתאם לשפה (RTL/LTR)
-      + "/* שינינו את font-size ל-12px ואת הרווח ל-3px */
-.card.compact .stars { display: flex !important; position: static !important; font-size: 12px !important; gap: 3px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
+      // Compact Stars & Logo Size Increase
+      + ".card.compact .stars { display: flex !important; position: static !important; font-size: 12px !important; gap: 3px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
       + ".card.compact .stars svg { width: 13px; height: 13px; }"
 
       + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
