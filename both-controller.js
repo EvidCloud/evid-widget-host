@@ -1293,7 +1293,7 @@ function calcNeedsReadMore(body, card) {
         card.removeChild(probe);
 
         // שינינו מ-2 ל-10 כדי למנוע כפתור מיותר כשהטקסט גבולי
-return fullH > clampH + 10;
+return fullH > clampH + 16;
       } catch (_) {
         return true;
       }
@@ -1318,7 +1318,7 @@ return fullH > clampH + 10;
         
         // בדיקה 2: גיבוי (בדיקת גלילה רגילה)
         // אם גובה התוכן (scrollHeight) גדול מהגובה הנראה (clientHeight)
-        if (el.scrollHeight > el.clientHeight + 10) {
+        if (el.scrollHeight > el.clientHeight + 16) {
             btn.style.display = displayType;
         }
       }, 50); // טיימר קצרצר של 50ms מספיק כדי לקבל מידות מדויקות
