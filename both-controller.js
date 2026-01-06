@@ -1,4 +1,4 @@
-/* both-controller v4.7.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.7.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1300,44 +1300,53 @@ return fullH > clampH + 16;
     }
 
     function scheduleReadMoreCheck(el, btn, card) {
-    // 1. קודם כל מאפסים מצב
+    // איפוס ראשוני (בזמן שהכרטיס מוסתר)
     btn.style.display = "none";
-    el.style.webkitLineClamp = "2"; // ברירת מחדל: 2 שורות
+    el.style.webkitLineClamp = "2"; 
     el.classList.remove("expanded");
 
-    // ממתינים לטעינת פונטים ורינדור
+    // ממתינים זמן בטיחות לטעינת הפונט וחישובי גובה
+    // בזמן הזה המשתמש לא רואה כלום כי הכרטיס שקוף
     setTimeout(function() {
-        const lineHeight = 20; // גובה משוער של שורה בפיקסלים
-        const maxLines = 2; // כמה שורות אנחנו רוצים בדרך כלל
-        const tolerancePx = 25; // ה"באפר": כמה אנחנו מוכנים לחרוג כדי לא לשים כפתור (בערך שורה וקצת)
+        const tolerancePx = 25; // הבאפר למתיחה
 
-        const scrollH = el.scrollHeight; // הגובה האמיתי של כל הטקסט
-        const clientH = el.clientHeight; // הגובה שמוצג כרגע (חתוך)
+        const scrollH = el.scrollHeight; 
+        const clientH = el.clientHeight; 
 
-        // אם אין חריגה בכלל - סיימנו
-        if (scrollH <= clientH) return;
+        // לוגיקת "סובלנות חכמה"
+        let showButton = false;
 
-        // === האלגוריתם החכם ===
-        
-        // בדיקה: האם הטקסט המלא חורג מהגובה המותר רק בקצת?
-        // (כלומר: הגובה המלא קטן מהגובה הנוכחי + הבאפר שהגדרנו)
-        const isJustALittleBitMore = scrollH <= (clientH + tolerancePx);
+        if (scrollH > clientH) {
+            // יש חריגה. נבדוק אם היא קטנה או גדולה.
+            const isJustALittleBitMore = scrollH <= (clientH + tolerancePx);
 
-        if (isJustALittleBitMore) {
-            // מקרה "כמעט נכנס":
-            // במקום לחתוך ולשים כפתור, אנחנו פשוט מבטלים את החיתוך
-            // ונותנים לכרטיס לגדול טיפה. זה נראה הרבה יותר טוב מכפתור על מילה אחת.
-            el.style.webkitLineClamp = "unset"; 
-            el.style.display = "block";
-            btn.style.display = "none"; // מוודאים שהכפתור מוסתר
-        } else {
-            // מקרה "ביקורת ארוכה באמת":
-            // החריגה גדולה מהבאפר -> משאירים את החיתוך ומציגים כפתור
-            const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
-            btn.style.display = displayType;
+            if (isJustALittleBitMore) {
+                // חריגה קטנה ("רותי") -> נרחיב את הכרטיס
+                el.style.webkitLineClamp = "unset"; 
+                el.style.display = "block";
+                showButton = false;
+            } else {
+                // חריגה גדולה ("מגילה") -> נשאיר חתוך ונציג כפתור
+                showButton = true;
+            }
         }
 
-    }, 500); // דיליי בטיחות לטעינת פונט
+        // יישום ההחלטה על הכפתור
+        if (showButton) {
+            const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
+            btn.style.display = displayType;
+        } else {
+            btn.style.display = "none";
+        }
+
+        // === רגע האמת: חשיפת הכרטיס ===
+        // 1. מבטלים את השקיפות הידנית ששמנו בהתחלה
+        card.style.opacity = ""; 
+        // 2. מוסיפים את הקלאס שמפעיל את האנימציה (slideInUp)
+        // זה גורם לכרטיס "להחליק פנימה" רק כשהוא כבר מסודר 100%
+        card.classList.add("enter");
+
+    }, 200); // 200ms זה מספיק זמן למחשב, ומהיר מספיק לעין
 }
     // הפונקציה שהייתה חסרה וגרמה לשגיאות
     function run() {
@@ -1365,8 +1374,12 @@ return fullH > clampH + 16;
        ========================================= */
     function renderReviewCard(item) {
       const card = document.createElement("div");
-      card.className = "card review-card enter style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
-
+      
+      // שינוי 1: מחקנו את המילה "enter" מהשורה הזאת כדי שהאנימציה לא תתחיל
+      card.className = "card review-card style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
+      
+      // שינוי 2: הוספנו שורה שמסתירה את הכרטיס לגמרי בהתחלה
+      card.style.opacity = "0";
       const x = document.createElement("button");
       x.className = "xbtn";
       x.textContent = "×";
