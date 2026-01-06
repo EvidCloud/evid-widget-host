@@ -1,4 +1,4 @@
-/* both-controller v4.7.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.7.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1300,30 +1300,45 @@ return fullH > clampH + 16;
     }
 
     function scheduleReadMoreCheck(el, btn, card) {
-      // 1. קודם כל נסתיר, כדי לא להראות סתם
-      btn.style.display = "none";
+    // 1. קודם כל מאפסים מצב
+    btn.style.display = "none";
+    el.style.webkitLineClamp = "2"; // ברירת מחדל: 2 שורות
+    el.classList.remove("expanded");
 
-      // 2. נמתין שהדפדפן יסיים לצייר את הטקסט ואז נמדוד פיקסלים
-      setTimeout(function() {
-        // קובעים את סוג התצוגה לפי העיצוב (באקזקיוטיב זה בלוק, באחרים זה בשורה)
-        const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
+    // ממתינים לטעינת פונטים ורינדור
+    setTimeout(function() {
+        const lineHeight = 20; // גובה משוער של שורה בפיקסלים
+        const maxLines = 2; // כמה שורות אנחנו רוצים בדרך כלל
+        const tolerancePx = 25; // ה"באפר": כמה אנחנו מוכנים לחרוג כדי לא לשים כפתור (בערך שורה וקצת)
+
+        const scrollH = el.scrollHeight; // הגובה האמיתי של כל הטקסט
+        const clientH = el.clientHeight; // הגובה שמוצג כרגע (חתוך)
+
+        // אם אין חריגה בכלל - סיימנו
+        if (scrollH <= clientH) return;
+
+        // === האלגוריתם החכם ===
         
-        // בדיקה 1: הפונקציה המדויקת (שכבר קיימת אצלך בקוד)
-        if (typeof calcNeedsReadMore === "function") {
-            if (calcNeedsReadMore(el, card)) {
-                btn.style.display = displayType;
-                return; // מצאנו שיש חריגה, סיימנו
-            }
-        } 
-        
-        // בדיקה 2: גיבוי (בדיקת גלילה רגילה)
-        // אם גובה התוכן (scrollHeight) גדול מהגובה הנראה (clientHeight)
-        if (el.scrollHeight > el.clientHeight + 16) {
+        // בדיקה: האם הטקסט המלא חורג מהגובה המותר רק בקצת?
+        // (כלומר: הגובה המלא קטן מהגובה הנוכחי + הבאפר שהגדרנו)
+        const isJustALittleBitMore = scrollH <= (clientH + tolerancePx);
+
+        if (isJustALittleBitMore) {
+            // מקרה "כמעט נכנס":
+            // במקום לחתוך ולשים כפתור, אנחנו פשוט מבטלים את החיתוך
+            // ונותנים לכרטיס לגדול טיפה. זה נראה הרבה יותר טוב מכפתור על מילה אחת.
+            el.style.webkitLineClamp = "unset"; 
+            el.style.display = "block";
+            btn.style.display = "none"; // מוודאים שהכפתור מוסתר
+        } else {
+            // מקרה "ביקורת ארוכה באמת":
+            // החריגה גדולה מהבאפר -> משאירים את החיתוך ומציגים כפתור
+            const displayType = card.classList.contains("style-exec") ? "block" : "inline-block";
             btn.style.display = displayType;
         }
-      }, 50); // טיימר קצרצר של 50ms מספיק כדי לקבל מידות מדויקות
-    }
 
+    }, 500); // דיליי בטיחות לטעינת פונט
+}
     // הפונקציה שהייתה חסרה וגרמה לשגיאות
     function run() {
       try { positionWrap(); } catch(_) {}
