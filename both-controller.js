@@ -269,6 +269,11 @@
     // === התיקון הגדול: משתנים גלובליים ===
     let CURR_LANG = "he";
     let T_DATA = DICT.he;
+    
+    // === משתנים חדשים לברנדינג ===
+    let IS_PRO = false; 
+    let SHOW_BRANDING = true;
+    let T_DATA = DICT.he;
 
     let markerSource = "default";
     let badgeSource = "default";
@@ -381,7 +386,22 @@
              DYNAMIC_SETTINGS.cardStyle = String(readAny(s, ["cardStyle", "style", "design"])).toLowerCase().trim();
           }
           // semanticEnabled (FireStore flags)
+          // בדיקת תוכנית (Pro / Basic)
           const plan = String(readAny(s, ["plan", "tier"]) || "").toLowerCase().trim();
+          
+          // זיהוי משתמש פרו
+          if (plan === "pro" || plan === "agency") {
+              IS_PRO = true;
+          }
+
+          // בדיקה האם להציג ברנדינג (לוגיקה: בייסיק תמיד רואים, פרו יכולים לכבות)
+          const hideBrandingPref = readAny(s, ["hideBranding", "hide_branding", "whiteLabel"]);
+          
+          if (IS_PRO && (hideBrandingPref === true || hideBrandingPref === "true")) {
+              SHOW_BRANDING = false;
+          } else {
+              SHOW_BRANDING = true; 
+          }
           const sem1 = readAny(s, ["semanticEnabled", "semantic", "isPro", "pro"]);
           const sem2 = readDeep(s, "features.semantic");
           const sem3 = readDeep(data, "features.semantic");
@@ -754,6 +774,27 @@
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
+      // === FOOTER LAYOUT (עיצוב השורה התחתונה) ===
+      + ".card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; width: 100%; box-sizing: border-box; }"
+      
+      // איפוס הכפתור שיישב טוב בשורה
+      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; margin: 0; white-space: nowrap; }"
+      
+      // עיצוב הלוגו (במבוק + טקסט)
+      + ".evid-branding { display: flex; align-items: center; gap: 5px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; }"
+      + ".evid-branding:hover { opacity: 1; }"
+      + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
+      + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
+      
+      // התאמה למצב כהה (Forest)
+      + ".card.style-forest .evid-logo-text { color: #fff; }"
+      + ".card.style-forest .card-footer { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }"
+
+      // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
+      + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
+      + ".card.compact .evid-logo-text { font-size: 10px; }" 
+      + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
+      + ".card.compact .read-more-btn { font-size: 10px; }"
       ;
       ;    root.appendChild(style);
 
@@ -1368,11 +1409,10 @@ return fullH > clampH + 16;
     function renderReviewCard(item) {
       const card = document.createElement("div");
       
-      // שינוי 1: מחקנו את המילה "enter" מהשורה הזאת כדי שהאנימציה לא תתחיל
+      // שינוי 1: הסרנו את enter והוספנו opacity=0 למניעת קפיצות
       card.className = "card review-card style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
-      
-      // שינוי 2: הוספנו שורה שמסתירה את הכרטיס לגמרי בהתחלה
       card.style.opacity = "0";
+
       const x = document.createElement("button");
       x.className = "xbtn";
       x.textContent = "×";
@@ -1388,7 +1428,6 @@ return fullH > clampH + 16;
       }
 
       // === אזור עליון (Header) ===
-      // זה הקונטיינר שמפזר לצדדים
       const header = document.createElement("div");
       header.className = "review-header";
 
@@ -1410,20 +1449,16 @@ return fullH > clampH + 16;
       starsDiv.className = "stars";
       starsDiv.innerHTML = "★★★★★" + GOOGLE_ICON_SVG;
 
-      // מכניסים ל-Header: הראשון ילך לימין, השני לשמאל
       header.appendChild(userPill);
-     // === מיקום כוכבים ולוגו (פיתרון אחיד ומושלם) ===
+      
+      // מיקום כוכבים ולוגו
       if (CARD_STYLE === 'exec') {
-          // 1. Executive: סגנון מיוחד - הכוכבים מתחת לשם
+          // Executive: כוכבים מתחת לשם
           nameCol.style.display = "flex";
           nameCol.style.flexDirection = "column";
           nameCol.appendChild(starsDiv);
       } else {
-          // 2. Large & Compact (Default/Forest/Leaf)
-          // אנחנו מכניסים את הכוכבים לתוך ה-Header!
-          // בגלל שה-Header הוא Flexbox עם justify-content: space-between:
-          // ב-RTL: שם מימין, כוכבים משמאל.
-          // ב-LTR: שם משמאל, כוכבים מימין.
+          // שאר העיצובים: כוכבים בצד הנגדי
           header.appendChild(starsDiv);
       }
       
@@ -1435,34 +1470,69 @@ return fullH > clampH + 16;
       const rawText = String(item.text || "");
       if (MARKER_ENABLED) body.innerHTML = safeReviewHtmlAllowSmartMark(rawText);
       else body.textContent = normalizeSpaces(stripAllTags(rawText));
+      
+      card.appendChild(body);
 
+      // ============================================================
+      // כאן מתחיל השינוי הגדול (שלב 4): יצירת ה-Footer
+      // ============================================================
+      
+      const footer = document.createElement("div");
+      footer.className = "card-footer";
+
+      // 1. אלמנט הלוגו (EVID) - נדבק לצד אחד
+      const brandContainer = document.createElement("div");
+      
+      // משתמשים במשתנה SHOW_BRANDING שהגדרת בשלבים הקודמים
+      if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
+          const brandLink = document.createElement("a");
+          brandLink.className = "evid-branding";
+          brandLink.href = "https://evid.co.il"; 
+          brandLink.target = "_blank";
+          brandLink.onclick = function(e) { e.stopPropagation(); };
+
+          // ה-SVG של הבמבוק (קוד וקטורי נקי)
+          brandLink.innerHTML = `
+            <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
+                <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
+                <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
+                <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span class="evid-logo-text">EVID</span>
+          `;
+          brandContainer.appendChild(brandLink);
+      }
+      footer.appendChild(brandContainer);
+
+      // 2. כפתור קרא עוד - נדבק לצד השני
       const readMoreBtn = document.createElement("button");
       readMoreBtn.className = "read-more-btn";
-      readMoreBtn.textContent = T_DATA.readMore; // שימוש בתרגום
+      readMoreBtn.textContent = T_DATA.readMore; 
       
-      // ... (המשך קוד) ...
+      readMoreBtn.onclick = function (e) {
+        e.stopPropagation();
+        const wasExpanded = body.classList.contains("expanded");
+        card.style.transition = "none";
+        card.style.height = "auto"; 
 
-      // שימוש ב-T_DATA הגלובלי
-  readMoreBtn.onclick = function (e) {
-    e.stopPropagation();
-    const wasExpanded = body.classList.contains("expanded");
-    card.style.transition = "none";
-    card.style.height = "auto";
+        if (!wasExpanded) {
+          body.classList.add("expanded");
+          readMoreBtn.textContent = T_DATA.close;
+          pauseForReadMore();
+        } else {
+          body.classList.remove("expanded");
+          readMoreBtn.textContent = T_DATA.readMore;
+          resumeFromReadMore();
+        }
+      };
+      
+      footer.appendChild(readMoreBtn);
 
-    if (!wasExpanded) {
-      body.classList.add("expanded");
-      readMoreBtn.textContent = T_DATA.close; // כאן היה הבאג
-      pauseForReadMore();
-    } else {
-      body.classList.remove("expanded");
-      readMoreBtn.textContent = T_DATA.readMore; // וגם כאן
-      resumeFromReadMore();
-    }
-  };
+      // הוספת הפוטר המוגמר לכרטיס
+      card.appendChild(footer);
 
-      card.appendChild(body);
-      card.appendChild(readMoreBtn);
-       // מפעיל את הבדיקה החכמה מיד ביצירת הכרטיס
+      // הפעלת הבדיקה החכמה (שתסתיר/תציג את הכפתור בתוך הפוטר)
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
       return card;
