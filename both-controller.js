@@ -1,4 +1,4 @@
-/* both-controller v4.7.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.7.9 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -773,13 +773,13 @@
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
-      // === FOOTER LAYOUT (סופי: כפתור בהתחלה, לוגו בסוף) ===
+      // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
       + ".card-footer { display: flex; align-items: center; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; }"
       
-      // הכפתור רגיל (יישב בהתחלה)
+      // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
       + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; white-space: nowrap; }"
       
-      // הלוגו מקבל דחיפה אוטומטית לקצה השני (Auto Margin)
+      // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 4px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; }"
       + ".evid-branding:hover { opacity: 1; }"
       
@@ -1477,7 +1477,7 @@ return fullH > clampH + 16;
       const footer = document.createElement("div");
       footer.className = "card-footer";
 
-      // 1. קודם כל הכפתור (תמיד בהתחלה/ימין בעברית)
+      // 1. קודם כל הכפתור! (יישב בצד ימין/התחלה)
       const readMoreBtn = document.createElement("button");
       readMoreBtn.className = "read-more-btn";
       readMoreBtn.textContent = T_DATA.readMore; 
@@ -1498,11 +1498,10 @@ return fullH > clampH + 16;
           resumeFromReadMore();
         }
       };
-      
+      // מכניסים את הכפתור ראשון לפוטר
       footer.appendChild(readMoreBtn);
 
-      // 2. אחר כך הלוגו (תמיד בסוף/שמאל בעברית)
-      // הגדרנו לו ב-CSS שיידחף לקצה השני (margin-inline-start: auto)
+      // 2. אחריו המיתוג (שיידחף אוטומטית לשמאל/סוף בגלל ה-CSS)
       if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
           const brandContainer = document.createElement("div");
           const brandLink = document.createElement("a");
@@ -1523,17 +1522,17 @@ return fullH > clampH + 16;
           `;
           
           brandContainer.appendChild(brandLink);
+          // מכניסים את המיתוג שני לפוטר
           footer.appendChild(brandContainer);
       }
 
-      // מכניסים את הפוטר לכרטיס
+      // סיום: מכניסים את הפוטר לכרטיס
       card.appendChild(footer);
 
-      // מפעילים את הבדיקה החכמה
+      // מפעילים את הבדיקה החכמה (שתעלים/תציג את הכפתור אבל לא תיגע במיתוג)
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
       return card;
-    }
     function renderPurchaseCard(p) {
       const card = document.createElement("div");
       card.className = "card purchase-card enter";
