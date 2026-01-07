@@ -1503,28 +1503,29 @@ return fullH > clampH + 16;
 
       // 2. אחריו המיתוג (שיידחף אוטומטית לשמאל/סוף בגלל ה-CSS)
       if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
-          const brandContainer = document.createElement("div");
-          const brandLink = document.createElement("a");
-          brandLink.className = "evid-branding";
-          brandLink.href = "https://evid.co.il"; 
-          brandLink.target = "_blank";
-          brandLink.onclick = function(e) { e.stopPropagation(); };
+          // 2. אחריו המיתוג (שיידחף אוטומטית לשמאל/סוף בגלל ה-CSS)
+if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
+  const brandLink = document.createElement("a");
+  brandLink.className = "evid-branding";
+  brandLink.href = "https://evid.co.il";
+  brandLink.target = "_blank";
+  brandLink.rel = "noopener noreferrer";
+  brandLink.onclick = function (e) { e.stopPropagation(); };
 
-          brandLink.innerHTML = `
-            <span class="evid-powered-text">Powered by</span>
-            <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
-                <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
-                <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
-                <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            <span class="evid-logo-text">EVID</span>
-          `;
-          
-          brandContainer.appendChild(brandLink);
-          // מכניסים את המיתוג שני לפוטר
-          footer.appendChild(brandContainer);
-      }
+  brandLink.innerHTML = `
+    <span class="evid-powered-text">Powered by</span>
+    <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
+      <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
+      <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
+      <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="evid-logo-text">EVID</span>
+  `;
+
+  // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך)
+  footer.appendChild(brandLink);
+}
 
       // סיום: מכניסים את הפוטר לכרטיס
       card.appendChild(footer);
