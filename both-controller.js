@@ -1,4 +1,4 @@
-/* both-controller v4.8.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.8.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1510,12 +1510,17 @@ if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
   brandLink.rel = "noopener noreferrer";
   brandLink.onclick = function (e) { e.stopPropagation(); };
 
-  brandLink.innerHTML = `
-  <span class="evid-powered-text">Powered by</span>
-  <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
-`;
+  const isRTL = String(T_DATA?.dir || "").toLowerCase() === "rtl";
 
-
+brandLink.innerHTML = isRTL
+  ? `
+      <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
+      <span class="evid-powered-text">Powered by</span>
+    `
+  : `
+      <span class="evid-powered-text">Powered by</span>
+      <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
+    `;
   // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
 }
