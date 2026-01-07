@@ -1533,6 +1533,7 @@ return fullH > clampH + 16;
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
       return card;
+      }
     function renderPurchaseCard(p) {
       const card = document.createElement("div");
       card.className = "card purchase-card enter";
