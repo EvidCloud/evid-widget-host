@@ -1,4 +1,4 @@
-/* both-controller v4.7.9 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.8.3 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -780,12 +780,13 @@
       + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; white-space: nowrap; }"
       
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
-      + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 4px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; }"
+      + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; direction: ltr; unicode-bidi: isolate; }"
       + ".evid-branding:hover { opacity: 1; }"
       
       + ".evid-powered-text { font-size: 9px; color: #94a3b8; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
       + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
+       + ".evid-brand-logo { height: 12px; width: auto; display: block; }"
       
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
@@ -1511,15 +1512,10 @@ if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
   brandLink.onclick = function (e) { e.stopPropagation(); };
 
   brandLink.innerHTML = `
-    <span class="evid-powered-text">Powered by</span>
-    <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
-      <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
-      <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
-      <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span class="evid-logo-text">EVID</span>
-  `;
+  <span class="evid-powered-text">Powered by</span>
+  <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
+`;
+
 
   // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
