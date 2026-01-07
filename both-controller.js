@@ -1502,9 +1502,7 @@ return fullH > clampH + 16;
       footer.appendChild(readMoreBtn);
 
       // 2. אחריו המיתוג (שיידחף אוטומטית לשמאל/סוף בגלל ה-CSS)
-      if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
-          // 2. אחריו המיתוג (שיידחף אוטומטית לשמאל/סוף בגלל ה-CSS)
-if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
+if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
   const brandLink = document.createElement("a");
   brandLink.className = "evid-branding";
   brandLink.href = "https://evid.co.il";
@@ -1523,10 +1521,9 @@ if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
     <span class="evid-logo-text">EVID</span>
   `;
 
-  // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך)
+  // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
 }
-
       // סיום: מכניסים את הפוטר לכרטיס
       card.appendChild(footer);
 
