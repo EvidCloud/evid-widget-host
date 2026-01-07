@@ -273,7 +273,6 @@
     // === משתנים חדשים לברנדינג ===
     let IS_PRO = false; 
     let SHOW_BRANDING = true;
-    let T_DATA = DICT.he;
 
     let markerSource = "default";
     let badgeSource = "default";
