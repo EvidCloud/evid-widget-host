@@ -773,22 +773,24 @@
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
-      // === FOOTER LAYOUT (עיצוב השורה התחתונה) ===
-      + ".card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; width: 100%; box-sizing: border-box; }"
+      // === FOOTER LAYOUT (סופי: כפתור בהתחלה, לוגו בסוף) ===
+      + ".card-footer { display: flex; align-items: center; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; }"
       
-      // איפוס הכפתור שיישב טוב בשורה
-      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; margin: 0; white-space: nowrap; }"
+      // הכפתור רגיל (יישב בהתחלה)
+      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; white-space: nowrap; }"
       
-      // עיצוב הלוגו (במבוק + טקסט)
-      + ".evid-branding { display: flex; align-items: center; gap: 5px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; }"
+      // הלוגו מקבל דחיפה אוטומטית לקצה השני (Auto Margin)
+      + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 4px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; }"
       + ".evid-branding:hover { opacity: 1; }"
+      
+      + ".evid-powered-text { font-size: 9px; color: #94a3b8; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
       + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
       
-      // התאמה למצב כהה (Forest)
+      // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
+      + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
       + ".card.style-forest .card-footer { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }"
-
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
       + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
       + ".card.compact .evid-logo-text { font-size: 10px; }" 
@@ -1407,8 +1409,6 @@ return fullH > clampH + 16;
        ========================================= */
     function renderReviewCard(item) {
       const card = document.createElement("div");
-      
-      // שינוי 1: הסרנו את enter והוספנו opacity=0 למניעת קפיצות
       card.className = "card review-card style-" + CARD_STYLE + (SIZE_MODE === "compact" ? " compact" : "");
       card.style.opacity = "0";
 
@@ -1452,12 +1452,10 @@ return fullH > clampH + 16;
       
       // מיקום כוכבים ולוגו
       if (CARD_STYLE === 'exec') {
-          // Executive: כוכבים מתחת לשם
           nameCol.style.display = "flex";
           nameCol.style.flexDirection = "column";
           nameCol.appendChild(starsDiv);
       } else {
-          // שאר העיצובים: כוכבים בצד הנגדי
           header.appendChild(starsDiv);
       }
       
@@ -1473,38 +1471,13 @@ return fullH > clampH + 16;
       card.appendChild(body);
 
       // ============================================================
-      // כאן מתחיל השינוי הגדול (שלב 4): יצירת ה-Footer
+      // FOOTER: כפתור מימין (התחלה), לוגו משמאל (סוף)
       // ============================================================
       
       const footer = document.createElement("div");
       footer.className = "card-footer";
 
-      // 1. אלמנט הלוגו (EVID) - נדבק לצד אחד
-      const brandContainer = document.createElement("div");
-      
-      // משתמשים במשתנה SHOW_BRANDING שהגדרת בשלבים הקודמים
-      if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
-          const brandLink = document.createElement("a");
-          brandLink.className = "evid-branding";
-          brandLink.href = "https://evid.co.il"; 
-          brandLink.target = "_blank";
-          brandLink.onclick = function(e) { e.stopPropagation(); };
-
-          // ה-SVG של הבמבוק (קוד וקטורי נקי)
-          brandLink.innerHTML = `
-            <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
-                <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
-                <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
-                <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            <span class="evid-logo-text">EVID</span>
-          `;
-          brandContainer.appendChild(brandLink);
-      }
-      footer.appendChild(brandContainer);
-
-      // 2. כפתור קרא עוד - נדבק לצד השני
+      // 1. קודם כל הכפתור (תמיד בהתחלה/ימין בעברית)
       const readMoreBtn = document.createElement("button");
       readMoreBtn.className = "read-more-btn";
       readMoreBtn.textContent = T_DATA.readMore; 
@@ -1528,10 +1501,35 @@ return fullH > clampH + 16;
       
       footer.appendChild(readMoreBtn);
 
-      // הוספת הפוטר המוגמר לכרטיס
+      // 2. אחר כך הלוגו (תמיד בסוף/שמאל בעברית)
+      // הגדרנו לו ב-CSS שיידחף לקצה השני (margin-inline-start: auto)
+      if (typeof SHOW_BRANDING !== 'undefined' && SHOW_BRANDING) {
+          const brandContainer = document.createElement("div");
+          const brandLink = document.createElement("a");
+          brandLink.className = "evid-branding";
+          brandLink.href = "https://evid.co.il"; 
+          brandLink.target = "_blank";
+          brandLink.onclick = function(e) { e.stopPropagation(); };
+
+          brandLink.innerHTML = `
+            <span class="evid-powered-text">Powered by</span>
+            <svg class="evid-mini-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 9C7.55 9 8 9.45 8 10V21H6V10C6 9.45 6.45 9 7 9Z" fill="#10B981"/>
+                <path d="M12 6C12.55 6 13 6.45 13 7V21H11V7C11 6.45 11.45 6 12 6Z" fill="#10B981" fill-opacity="0.8"/>
+                <path d="M17 3C17.55 3 18 3.45 18 4V21H16V4C16 3.45 16.45 3 17 3Z" fill="#10B981" fill-opacity="0.6"/>
+                <path d="M18 3C18 3 20 1 20 4C20 7 18 5 18 5" stroke="#10B981" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span class="evid-logo-text">EVID</span>
+          `;
+          
+          brandContainer.appendChild(brandLink);
+          footer.appendChild(brandContainer);
+      }
+
+      // מכניסים את הפוטר לכרטיס
       card.appendChild(footer);
 
-      // הפעלת הבדיקה החכמה (שתסתיר/תציג את הכפתור בתוך הפוטר)
+      // מפעילים את הבדיקה החכמה
       scheduleReadMoreCheck(body, readMoreBtn, card);
 
       return card;
