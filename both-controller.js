@@ -774,13 +774,12 @@
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
-      + ".card-footer { display: flex; align-items: center; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; }"
-      
+      + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }"      
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
       + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; white-space: nowrap; }"
       
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
-      + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; direction: ltr; unicode-bidi: isolate; }"
+      + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
       + ".evid-branding:hover { opacity: 1; }"
       
       + ".evid-powered-text { font-size: 9px; color: #94a3b8; margin-inline-end: 2px; }" 
