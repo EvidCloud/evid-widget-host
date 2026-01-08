@@ -785,7 +785,7 @@
       + ".evid-powered-text { font-size: 9px; color: #94a3b8; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
       + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
-       + ".evid-brand-logo { height: 12px; width: auto; display: block; }"
+       + ".evid-brand-logo { height: 16px; width: auto; display: block; }"
       
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
