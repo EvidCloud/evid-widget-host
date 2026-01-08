@@ -1,4 +1,4 @@
-/* both-controller v4.8.5 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.8.7 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -738,7 +738,7 @@
 
       + ".card.style-leaf{border-radius:24px 4px 24px 4px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1); border-right:4px solid " + THEME_COLOR + ";}"
       + ".card.style-leaf .avatar-fallback{background:rgba(" + THEME_RGB + ", 0.15); color:" + THEME_COLOR + "; border:1px solid " + THEME_COLOR + ";}"
-      + ".card.style-leaf .reviewer-name{color:" + THEME_COLOR + ";}"
+      + ".card.style-leaf .reviewer-name{color:#1e293b;}"
       + ".card.style-leaf .read-more-btn{background:rgba(" + THEME_RGB + ", 0.1) !important; color:" + THEME_COLOR + "; padding:4px 12px; border-radius:20px; text-decoration:none; display:inline-block; transition:none;}"
       + ".card.style-leaf .read-more-btn:hover{background:" + THEME_COLOR + "!important; color:#fff;}"
 
