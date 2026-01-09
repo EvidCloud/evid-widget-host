@@ -393,14 +393,37 @@
               IS_PRO = true;
           }
 
-          // בדיקה האם להציג ברנדינג (לוגיקה: בייסיק תמיד רואים, פרו יכולים לכבות)
-          const hideBrandingPref = readAny(s, ["hideBranding", "hide_branding", "whiteLabel"]);
-          
-          if (IS_PRO && (hideBrandingPref === true || hideBrandingPref === "true")) {
-              SHOW_BRANDING = false;
-          } else {
-              SHOW_BRANDING = true; 
-          }
+          // בדיקה האם להציג ברנדינג (בייסיק תמיד רואים, פרו יכולים לכבות)
+
+// 1) קובעים plan (מה-DB) + מאפשרים override של Preview
+let plan = String(readAny(s, ["plan", "tier"]) || "").toLowerCase().trim();
+
+try {
+  const po = (typeof window !== "undefined") ? (window.EVID_PREVIEW_OVERRIDES || {}) : {};
+  const ovPlan = String(po.plan || po.tier || "").toLowerCase().trim();
+  if (ovPlan) plan = ovPlan;
+} catch (e) {}
+
+// 2) מגדירים PRO לפי plan
+if (plan === "pro" || plan === "agency") {
+  IS_PRO = true;
+}
+
+// 3) hideBranding מה-DB + override של Preview
+let hideBrandingPref = readAny(s, ["hideBranding", "hide_branding", "whiteLabel"]);
+
+try {
+  const po = (typeof window !== "undefined") ? (window.EVID_PREVIEW_OVERRIDES || {}) : {};
+  if (po && typeof po.hideBranding !== "undefined") {
+    hideBrandingPref = po.hideBranding;
+  }
+} catch (e) {}
+
+const isHidden = (hideBrandingPref === true || hideBrandingPref === "true");
+
+// 4) לוגיקה סופית: BASIC תמיד מיתוג מוצג, PRO יכול להסתיר
+SHOW_BRANDING = IS_PRO ? !isHidden : true;
+
           const sem1 = readAny(s, ["semanticEnabled", "semantic", "isPro", "pro"]);
           const sem2 = readDeep(s, "features.semantic");
           const sem3 = readDeep(data, "features.semantic");
