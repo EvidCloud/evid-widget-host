@@ -1,4 +1,4 @@
-/* both-controller v4.8.7 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -385,13 +385,7 @@
              DYNAMIC_SETTINGS.cardStyle = String(readAny(s, ["cardStyle", "style", "design"])).toLowerCase().trim();
           }
           // semanticEnabled (FireStore flags)
-          // בדיקת תוכנית (Pro / Basic)
-          const plan = String(readAny(s, ["plan", "tier"]) || "").toLowerCase().trim();
           
-          // זיהוי משתמש פרו
-          if (plan === "pro" || plan === "agency") {
-              IS_PRO = true;
-          }
 
           // בדיקה האם להציג ברנדינג (בייסיק תמיד רואים, פרו יכולים לכבות)
 
