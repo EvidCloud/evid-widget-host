@@ -1671,6 +1671,7 @@ brandLink.innerHTML = isRTL
       const card = itm.kind === "purchase" ? renderPurchaseCard(itm.data) : renderReviewCard(itm.data);
 
       wrap.appendChild(card);
+       enforceBrandingCSS();
       currentCard = card;
 
       scheduleHide(duration);
