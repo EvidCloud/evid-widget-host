@@ -763,7 +763,10 @@ SHOW_BRANDING = IS_PRO ? !isHidden : true;
       + ".card.style-exec .avatar-fallback{background:" + THEME_COLOR + "; color:#fff; border-radius:0;}"
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
-+ ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
+      + ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
+       // === תיקון לעיצוב 4 בלבד: שבירת שורה למיתוג ===
+      + ".card.style-exec .card-footer { flex-wrap: wrap; gap: 8px; }" 
+      + ".card.style-exec .evid-branding { width: 100%; margin-inline-start: 0; justify-content: flex-end; }"
       
       // === Executive Style Fixes ===
       + ".card.style-exec .stars { position: static; margin-top: 4px; color: #000000; }"
