@@ -1,4 +1,4 @@
-/* both-controller v4.9.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -289,6 +289,23 @@
     let delayFromFirestorePresent = false;
     let badgeTextFromFirestorePresent = false;
     let semanticFromFirestorePresent = false;
+     function enforceBrandingCSS() {
+  try {
+    const STYLE_ID = "evid-branding-enforcer";
+    let st = document.getElementById(STYLE_ID);
+    if (!st) {
+      st = document.createElement("style");
+      st.id = STYLE_ID;
+      document.head.appendChild(st);
+    }
+
+    // אם צריך להסתיר מיתוג – נעלים כל אלמנט עם המחלקה evid-branding (וגם Powered-by אם יש לך משהו אחר)
+    st.textContent = (SHOW_BRANDING === false)
+      ? `.evid-branding{display:none!important;}`
+      : ``;
+  } catch (e) {}
+}
+
 
     function readAny(obj, keys) {
       for (const k of keys) {
@@ -389,8 +406,15 @@
 
           // בדיקה האם להציג ברנדינג (בייסיק תמיד רואים, פרו יכולים לכבות)
 
+// sSettings = מה שמגיע מתוך settings אם קיים, אחרת מהאובייקט s (כמו אצלך בקוד)
+const sSettings = (data && data.settings) ? data.settings : (s || {});
+
 // 1) קובעים plan (מה-DB) + מאפשרים override של Preview
-let plan = String(readAny(s, ["plan", "tier"]) || "").toLowerCase().trim();
+let plan = String(
+  readAny(sSettings, ["plan", "tier"]) ||
+  readAny(data || {}, ["plan", "tier"]) ||
+  ""
+).toLowerCase().trim();
 
 try {
   const po = (typeof window !== "undefined") ? (window.EVID_PREVIEW_OVERRIDES || {}) : {};
@@ -398,13 +422,14 @@ try {
   if (ovPlan) plan = ovPlan;
 } catch (e) {}
 
-// 2) מגדירים PRO לפי plan
-if (plan === "pro" || plan === "agency") {
-  IS_PRO = true;
-}
+// 2) מגדירים PRO לפי plan (שימו לב: פה אנחנו גם מאפסים אם זה לא פרו)
+IS_PRO = (plan === "pro" || plan === "agency");
 
 // 3) hideBranding מה-DB + override של Preview
-let hideBrandingPref = readAny(s, ["hideBranding", "hide_branding", "whiteLabel"]);
+let hideBrandingPref = readAny(sSettings, ["hideBranding", "hide_branding", "whiteLabel"]);
+if (hideBrandingPref === undefined) {
+  hideBrandingPref = readAny(data || {}, ["hideBranding", "hide_branding", "whiteLabel"]);
+}
 
 try {
   const po = (typeof window !== "undefined") ? (window.EVID_PREVIEW_OVERRIDES || {}) : {};
@@ -417,6 +442,8 @@ const isHidden = (hideBrandingPref === true || hideBrandingPref === "true");
 
 // 4) לוגיקה סופית: BASIC תמיד מיתוג מוצג, PRO יכול להסתיר
 SHOW_BRANDING = IS_PRO ? !isHidden : true;
+enforceBrandingCSS();
+
 
           const sem1 = readAny(s, ["semanticEnabled", "semantic", "isPro", "pro"]);
           const sem2 = readDeep(s, "features.semantic");
@@ -1534,12 +1561,12 @@ if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
 
 brandLink.innerHTML = isRTL
   ? `
-      <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
+      <img class="evid-brand-logo" src="https://i.ibb.co/6JR8ysNk/logo-Green-Tiny-Png.png" alt="EVID" />
       <span class="evid-powered-text">Powered by</span>
     `
   : `
       <span class="evid-powered-text">Powered by</span>
-      <img class="evid-brand-logo" src="https://i.ibb.co/YB6LkgZc/logo-Green-Png.png" alt="EVID" />
+      <img class="evid-brand-logo" src="https://i.ibb.co/6JR8ysNk/logo-Green-Tiny-Png.png" alt="EVID" />
     `;
   // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
@@ -1549,7 +1576,7 @@ brandLink.innerHTML = isRTL
 
       // מפעילים את הבדיקה החכמה (שתעלים/תציג את הכפתור אבל לא תיגע במיתוג)
       scheduleReadMoreCheck(body, readMoreBtn, card);
-
+      enforceBrandingCSS();
       return card;
       }
     function renderPurchaseCard(p) {
