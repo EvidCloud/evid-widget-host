@@ -1,4 +1,4 @@
-/* both-controller v4.9.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -496,6 +496,28 @@ enforceBrandingCSS();
       // קריאת שפה
       const langAttr = pickAttr("data-lang");
       if (langAttr) DYNAMIC_SETTINGS.lang = langAttr.toLowerCase().trim();
+      // (A) plan override from embed attributes
+try {
+  const pl = pickAttr("data-plan", "data-tier");
+  if (pl) {
+    const p = String(pl).toLowerCase().trim();
+    plan = p;
+    IS_PRO = (plan === "pro" || plan === "agency");
+  }
+} catch (e) {}
+
+// (B) hideBranding override from embed attributes
+try {
+  const hbRaw = pickAttr("data-hide-branding", "data-hidebranding", "data-white-label", "data-whitelabel");
+  if (hbRaw != null && hbRaw !== "") {
+    const b = parseBoolRaw(String(hbRaw).toLowerCase().trim());
+    if (b !== null) {
+      const isHiddenAttr = (b === true);
+      SHOW_BRANDING = IS_PRO ? !isHiddenAttr : true;
+      enforceBrandingCSS();
+    }
+  }
+} catch (e) {}
 
       // === ביטול חסימות: קריאת עיצוב, צבע ופונט תמיד (לטובת התצוגה המקדימה) ===
       
