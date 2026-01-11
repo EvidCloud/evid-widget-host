@@ -1672,6 +1672,7 @@ brandLink.innerHTML = isRTL
 
       wrap.appendChild(card);
        enforceBrandingCSS();
+       if (SHOW_BRANDING === false) { try { wrap.querySelectorAll(".evid-branding").forEach(el => el.remove()); } catch(e) {} }
       currentCard = card;
 
       scheduleHide(duration);
