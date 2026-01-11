@@ -1,4 +1,4 @@
-/* both-controller v4.9.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -273,6 +273,7 @@
     // === משתנים חדשים לברנדינג ===
     let IS_PRO = false; 
     let SHOW_BRANDING = true;
+    let PLAN = "basic";
 
     let markerSource = "default";
     let badgeSource = "default";
@@ -410,7 +411,7 @@
 const sSettings = (data && data.settings) ? data.settings : (s || {});
 
 // 1) קובעים plan (מה-DB) + מאפשרים override של Preview
-let plan = String(
+PLAN = String(
   readAny(sSettings, ["plan", "tier"]) ||
   readAny(data || {}, ["plan", "tier"]) ||
   ""
@@ -419,11 +420,12 @@ let plan = String(
 try {
   const po = (typeof window !== "undefined") ? (window.EVID_PREVIEW_OVERRIDES || {}) : {};
   const ovPlan = String(po.plan || po.tier || "").toLowerCase().trim();
-  if (ovPlan) plan = ovPlan;
+  if (ovPlan) PLAN = ovPlan;
 } catch (e) {}
 
-// 2) מגדירים PRO לפי plan (שימו לב: פה אנחנו גם מאפסים אם זה לא פרו)
-IS_PRO = (plan === "pro" || plan === "agency");
+// 2) מגדירים PRO לפי PLAN
+IS_PRO = (PLAN === "pro" || PLAN === "agency");
+
 
 // 3) hideBranding מה-DB + override של Preview
 let hideBrandingPref = readAny(sSettings, ["hideBranding", "hide_branding", "whiteLabel"]);
