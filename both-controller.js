@@ -452,7 +452,7 @@ enforceBrandingCSS();
           const sem3 = readDeep(data, "features.semantic");
 
           let enabled = null;
-          if (plan === "pro") enabled = true;
+          if (PLAN === "pro") enabled = true;
           if (enabled === null && sem1 !== undefined) {
             const b = parseBoolRaw(sem1);
             if (b !== null) enabled = b;
@@ -501,11 +501,11 @@ enforceBrandingCSS();
       // (A) plan override from embed attributes
 try {
   const pl = pickAttr("data-plan", "data-tier");
-  if (pl) {
-    const p = String(pl).toLowerCase().trim();
-    plan = p;
-    IS_PRO = (plan === "pro" || plan === "agency");
-  }
+if (pl) {
+  PLAN = String(pl).toLowerCase().trim();
+  IS_PRO = (PLAN === "pro" || PLAN === "agency");
+}
+
 } catch (e) {}
 
 // (B) hideBranding override from embed attributes
