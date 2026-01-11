@@ -1,4 +1,4 @@
-/* both-controller v4.9.6 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -315,6 +315,34 @@
       return undefined;
     }
 
+     function apiOriginFromReviewsEp() {
+  try { return new URL(REVIEWS_EP).origin; } catch (e) { return "https://review-widget-psi.vercel.app"; }
+}
+
+async function loadBrandingFromServer(slugOrId) {
+  try {
+    const ORIGIN = apiOriginFromReviewsEp();
+    const url = `${ORIGIN}/api/tenant?slug=${encodeURIComponent(slugOrId)}&purpose=widget`;
+
+    const r = await fetch(url, { method: "GET" });
+    if (!r.ok) return false;
+
+    const j = await r.json();
+
+    const plan = String(j.plan || j.tier || "basic").toLowerCase().trim();
+    const hb = (j.hideBranding ?? j?.settings?.hideBranding);
+    const isHidden = (hb === true || hb === "true");
+
+    IS_PRO = (plan === "pro" || plan === "agency");
+    SHOW_BRANDING = IS_PRO ? !isHidden : true;
+
+    enforceBrandingCSS();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
     // ---- Firestore widget settings ----
     try {
       const widgetId = __WIDGET_ID__;
@@ -492,7 +520,8 @@ enforceBrandingCSS();
     } catch (e) {
       console.warn("EVID: Could not load settings from Firestore, using defaults.", e);
     }
-
+// אם אין הרשאות ל-Firestore בלייב, נמשוך plan+hideBranding מהשרת
+await loadBrandingFromServer(DYNAMIC_SETTINGS.slug || widgetId || SLUG);
    // ---- <script data-*> overrides ----
     try {
       // קריאת שפה
