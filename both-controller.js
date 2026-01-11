@@ -732,6 +732,9 @@ try {
       }
       return "";
     })();
+// --- FIX: ensure widgetId exists (used by dynamic import boot) ---
+const widgetId = CURRENT_SLUG;   // your id and slug are the same in your embeds
+const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
     // ---------- Hebrew verbs ----------
     const HEBREW_VERBS = {
