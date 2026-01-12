@@ -1,4 +1,4 @@
-/* both-controller v4.9.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.91 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -342,10 +342,11 @@ async function loadBrandingFromServer(slugOrId) {
     return false;
   }
 }
+// define once, in outer scope (prevents TDZ / scope issues)
+const widgetId = (__WIDGET_ID__ || "").trim();
 
     // ---- Firestore widget settings ----
     try {
-      const widgetId = __WIDGET_ID__;
       if (widgetId) {
         const docRef = doc(db, "widgets", widgetId);
         const docSnap = await getDoc(docRef);
@@ -521,7 +522,7 @@ enforceBrandingCSS();
       console.warn("EVID: Could not load settings from Firestore, using defaults.", e);
     }
 // אם אין הרשאות ל-Firestore בלייב, נמשוך plan+hideBranding מהשרת
-await loadBrandingFromServer(DYNAMIC_SETTINGS.slug || widgetId || SLUG);
+await loadBrandingFromServer(DYNAMIC_SETTINGS.slug || widgetId || CURRENT_SLUG);
    // ---- <script data-*> overrides ----
     try {
       // קריאת שפה
