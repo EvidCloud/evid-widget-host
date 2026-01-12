@@ -502,7 +502,7 @@ enforceBrandingCSS();
           }
 
           console.log("EVID: Widget settings loaded from Firestore", {
-            id: widgetId,
+            id: __WIDGET_ID__,
             color: DYNAMIC_SETTINGS.color,
             font: DYNAMIC_SETTINGS.font,
             position: DYNAMIC_SETTINGS.position,
@@ -733,8 +733,6 @@ try {
       }
       return "";
     })();
-// --- FIX: ensure widgetId exists (used by dynamic import boot) ---
-const widgetId = CURRENT_SLUG;   // your id and slug are the same in your embeds
 const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
     // ---------- Hebrew verbs ----------
