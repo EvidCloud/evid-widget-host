@@ -322,12 +322,20 @@
 async function loadBrandingFromServer(slugOrId) {
   try {
     const ORIGIN = apiOriginFromReviewsEp();
-    const url = `${ORIGIN}/api/tenant?slug=${encodeURIComponent(slugOrId)}&purpose=widget`;
+    const url = `${ORIGIN}/api/tenant?action=public-widget-config&slug=${encodeURIComponent(slugOrId)}`;
 
     const r = await fetch(url, { method: "GET" });
     if (!r.ok) return false;
 
     const j = await r.json();
+        // If this slug is not allowed on this site – remove widget and stop
+    if (j && j.allowed === false) {
+      try {
+        const el = document.getElementById("reviews-widget");
+        if (el) el.remove();
+      } catch {}
+      return false;
+    }
 
     const plan = String(j.plan || j.tier || "basic").toLowerCase().trim();
     const hb = (j.hideBranding ?? j?.settings?.hideBranding);
