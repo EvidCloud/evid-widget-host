@@ -354,6 +354,24 @@ async function loadBrandingFromServer(slugOrId) {
 const widgetId = (__WIDGET_ID__ || "").trim();
 
     // ---- Firestore widget settings ----
+     // ---- Public config (plan + branding + allowedOrigin) ----
+try {
+  const key = (CURRENT_SLUG || widgetId || "").trim();
+  if (key) {
+    const ok = await loadBrandingFromServer(key);
+
+    // אם חסום באתר הזה – מסירים ולא ממשיכים
+    // (מונע "שבור" על אתר אחר)
+    if (ok === false) {
+      try {
+        const el = document.getElementById("reviews-widget");
+        if (el) el.remove();
+      } catch {}
+      return;
+    }
+  }
+} catch (_) {}
+
     try {
       if (widgetId) {
         const docRef = doc(db, "widgets", widgetId);
