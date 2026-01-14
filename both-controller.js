@@ -322,7 +322,9 @@
 async function loadBrandingFromServer(slugOrId) {
   try {
     const ORIGIN = apiOriginFromReviewsEp();
-    const url = `${ORIGIN}/api/tenant?action=public-widget-config&slug=${encodeURIComponent(slugOrId)}`;
+    const __PREVIEW__ = (new URL(import.meta.url).searchParams.get("preview") === "1");
+    const __PREVIEW_QS__ = __PREVIEW__ ? "&preview=1" : "";
+     const url = `${ORIGIN}/api/tenant?action=public-widget-config&slug=${encodeURIComponent(slugOrId)}${__PREVIEW_QS__}`;
 
     const r = await fetch(url, { method: "GET" });
     if (!r.ok) return false;
