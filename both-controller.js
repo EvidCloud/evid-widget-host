@@ -905,10 +905,15 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
-      + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }"      
+      + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }" 
+       + ".card.style-default .card-footer, .card.style-forest .card-footer, .card.style-leaf .card-footer{align-items:baseline;}"
++ ".card.style-default .evid-branding, .card.style-forest .evid-branding, .card.style-leaf .evid-branding{align-items:baseline;}"
++ ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo{display:inline-block !important; vertical-align:baseline !important;}"
++ ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
+
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
-      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: none !important; white-space: nowrap; }"
-      
+      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: none !important; white-space: nowrap; margin-top: 0 !important; }"
+
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
       + ".evid-branding:hover { opacity: 1; }"
