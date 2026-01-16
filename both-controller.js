@@ -922,6 +922,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
       + ".card.style-forest .card-footer { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }"
+      + ".card.style-default.has-readmore .card-footer, .card.style-forest.has-readmore .card-footer, .card.style-leaf.has-readmore .card-footer { align-items: flex-end; }"
+      + ".card.style-default.has-readmore .read-more-btn, .card.style-forest.has-readmore .read-more-btn, .card.style-leaf.has-readmore .read-more-btn { line-height: 1; padding-bottom: 1px; display: inline-flex; align-items: flex-end; }"
+      + ".card.style-default.has-readmore .evid-branding, .card.style-forest.has-readmore .evid-branding, .card.style-leaf.has-readmore .evid-branding { align-items: flex-end; padding-bottom: 1px; }"
+
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
       + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
       + ".card.compact .evid-logo-text { font-size: 10px; }" 
@@ -1504,6 +1508,15 @@ return fullH > clampH + 16;
         } else {
             btn.style.display = "none";
         }
+       // ✅ add class only when Read more is shown (for footer alignment)
+if (card) {
+  const styleOk =
+    card.classList.contains("style-default") ||
+    card.classList.contains("style-dark") ||
+    card.classList.contains("style-modern");
+  card.classList.toggle("has-readmore", showButton && styleOk);
+}
+
 
         // === רגע האמת: חשיפת הכרטיס ===
         // 1. מבטלים את השקיפות הידנית ששמנו בהתחלה
