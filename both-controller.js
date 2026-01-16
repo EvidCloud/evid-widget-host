@@ -874,6 +874,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-exec .reviewer-name{color:#000; letter-spacing:-0.5px;}"
       + ".card.style-exec .review-text{color:#000;}"
       + ".card.style-exec .read-more-btn{display:none; background:" + THEME_COLOR + "!important; color:#fff; padding:6px 0; width:100%; text-align:center; text-decoration:none; text-transform:uppercase; margin-top:12px;}"
+       
        // === תיקון לעיצוב 4 בלבד: שבירת שורה למיתוג ===
       + ".card.style-exec .card-footer { flex-wrap: wrap; gap: 8px; }" 
       + ".card.style-exec .evid-branding { width: 100%; margin-inline-start: 0; justify-content: flex-end; }"
@@ -915,7 +916,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".evid-powered-text { font-size: 9px; color: #2E2E2E; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
       + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
-       + ".evid-brand-logo { height: 22px; width: auto; display: block; }"
+       + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
       
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
