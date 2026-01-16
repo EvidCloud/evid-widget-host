@@ -907,7 +907,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
       + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }"      
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
-      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: underline; white-space: nowrap; }"
+      + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: none !important; white-space: nowrap; }"
       
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
@@ -1509,13 +1509,15 @@ return fullH > clampH + 16;
             btn.style.display = "none";
         }
        // ✅ add class only when Read more is shown (for footer alignment)
+// ✅ add class only when Read more is shown (for footer alignment)
 if (card) {
   const styleOk =
     card.classList.contains("style-default") ||
-    card.classList.contains("style-dark") ||
-    card.classList.contains("style-modern");
+    card.classList.contains("style-forest") ||
+    card.classList.contains("style-leaf"); // בלי exec
   card.classList.toggle("has-readmore", showButton && styleOk);
 }
+
 
 
         // === רגע האמת: חשיפת הכרטיס ===
