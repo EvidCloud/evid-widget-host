@@ -1,4 +1,4 @@
-/* both-controller v4.9.94 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.96 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -916,7 +916,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
-      + ".evid-branding:hover { opacity: 1; }"
+      + ".card.style-default .evid-branding, .card.style-forest .evid-branding, .card.style-leaf .evid-branding{align-items:baseline !important;}"
+       + ".evid-branding:hover { opacity: 1; }"
       
       + ".evid-powered-text { font-size: 9px; color: #2E2E2E; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
