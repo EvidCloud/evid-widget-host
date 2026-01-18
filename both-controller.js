@@ -906,8 +906,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
       + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }" 
-       + ".card.style-default .card-footer, .card.style-forest .card-footer, .card.style-leaf .card-footer{align-items:baseline;}"
-+ ".card.style-default .evid-branding, .card.style-forest .evid-branding, .card.style-leaf .evid-branding{align-items:baseline;}"
 + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
@@ -915,15 +913,13 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
       // המיתוג: מקבל "בעיטה" לקצה השני (שמאל בעברית) בעזרת margin-inline-start: auto
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
-      + ".card.style-default .evid-branding, .card.style-forest .evid-branding, .card.style-leaf .evid-branding{align-items:baseline !important;}"
        + ".evid-branding:hover { opacity: 1; }"
       
       + ".evid-powered-text { font-size: 9px; color: #2E2E2E; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
       + ".evid-mini-icon { width: 12px; height: 12px; display: inline-block; }"
-+ ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 2px; }"
++ ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 6px; }"
        + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
-       + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo { margin-top: 20px !important; position: static !important; top: auto !important; transform: none !important; }"      
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
