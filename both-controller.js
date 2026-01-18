@@ -923,7 +923,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".evid-mini-icon { width: 12px; height: 12px; display: inline-block; }"
 + ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 2px; }"
        + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
-       + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo { margin-top: 2px !important; position: static !important; top: auto !important; transform: none !important; }"      
+       + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo { margin-top: 8px !important; position: static !important; top: auto !important; transform: none !important; }"      
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
