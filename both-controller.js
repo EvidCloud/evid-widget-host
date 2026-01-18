@@ -921,7 +921,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       
       + ".evid-powered-text { font-size: 9px; color: #2E2E2E; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
-      + ".evid-mini-icon { width: 12px; height: 12px; display: block; }"
+      + ".evid-mini-icon { width: 12px; height: 12px; display: inline-block; }"
++ ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 2px; }"
        + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
        + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo{position:relative !important; top:2px !important;}"
       
