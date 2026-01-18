@@ -908,7 +908,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }" 
        + ".card.style-default .card-footer, .card.style-forest .card-footer, .card.style-leaf .card-footer{align-items:baseline;}"
 + ".card.style-default .evid-branding, .card.style-forest .evid-branding, .card.style-leaf .evid-branding{align-items:baseline;}"
-+ ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo{display:inline-block !important; vertical-align:baseline !important; transform: translateY(2px) !important;}"
 + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
@@ -924,8 +923,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".evid-mini-icon { width: 12px; height: 12px; display: inline-block; }"
 + ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 2px; }"
        + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
-       + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo{position:relative !important; top:2px !important;}"
-      
+       + ".card.style-default .evid-brand-logo, .card.style-forest .evid-brand-logo, .card.style-leaf .evid-brand-logo { margin-top: 2px !important; position: static !important; top: auto !important; transform: none !important; }"      
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
