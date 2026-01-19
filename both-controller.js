@@ -928,7 +928,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 + ".card.style-default.has-readmore .card-footer, .card.style-forest.has-readmore .card-footer, .card.style-leaf.has-readmore .card-footer { align-items: center !important; }"
 + ".card.style-default.has-readmore .read-more-btn, .card.style-forest.has-readmore .read-more-btn, .card.style-leaf.has-readmore .read-more-btn { display: inline-flex; align-items: center; padding-bottom: 0 !important; line-height: 1; }"
 + ".card.style-default.has-readmore .evid-branding, .card.style-forest.has-readmore .evid-branding, .card.style-leaf.has-readmore .evid-branding { align-items: center !important; padding-bottom: 0 !important; transform: none !important; }"
-+ ".card.style-leaf .card-footer { padding-bottom: 2px; }"
++ ".card.style-leaf.has-readmore { padding-bottom: 8px !important; }"
++ ".card.style-leaf.has-readmore .card-footer { padding-bottom: 8px !important; }"
++ ".card.style-leaf.has-readmore .read-more-btn { padding-bottom: 2px !important; line-height: 1.2 !important; }"
+
 
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
       + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
