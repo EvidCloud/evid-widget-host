@@ -866,7 +866,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-leaf{border-radius:24px 4px 24px 4px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1); border-right:4px solid " + THEME_COLOR + ";}"
       + ".card.style-leaf .avatar-fallback{background:rgba(" + THEME_RGB + ", 0.15); color:" + THEME_COLOR + "; border:1px solid " + THEME_COLOR + ";}"
       + ".card.style-leaf .reviewer-name{color:#1e293b;}"
-      + ".card.style-leaf .read-more-btn{background:rgba(" + THEME_RGB + ", 0.1) !important; color:" + THEME_COLOR + "; padding:4px 12px; border-radius:20px; text-decoration:none; display:inline-block; transition:none;}"
++ ".card.style-leaf .read-more-btn{background:rgba(" + THEME_RGB + ", 0.1) !important; color:" + THEME_COLOR + "; padding:5px 12px; line-height:1.2; border-radius:20px; text-decoration:none; display:inline-block; transition:none; box-sizing:border-box;}"
       + ".card.style-leaf .read-more-btn:hover{background:" + THEME_COLOR + "!important; color:#fff;}"
 
       + ".card.style-exec{border-radius:0px; border:2px solid " + THEME_COLOR + "; box-shadow:6px 6px 0px " + THEME_COLOR + ";}"
@@ -925,11 +925,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
       + ".card.style-forest .card-footer { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px; }"
-+ ".card.style-default.has-readmore .card-footer, .card.style-forest.has-readmore .card-footer, .card.style-leaf.has-readmore .card-footer { align-items: baseline; }"
-      + ".card.style-default.has-readmore .read-more-btn, .card.style-forest.has-readmore .read-more-btn, .card.style-leaf.has-readmore .read-more-btn { line-height: 1; display: inline-flex; align-items: baseline; align-self: baseline; padding-bottom: 0; }"
-+ ".card.style-default.has-readmore .evid-branding, .card.style-forest.has-readmore .evid-branding, .card.style-leaf.has-readmore .evid-branding { align-items: baseline !important; padding-bottom: 0 !important; }"
-+ ".card.style-default.has-readmore .evid-branding, .card.style-forest.has-readmore .evid-branding, .card.style-leaf.has-readmore .evid-branding { transform: none !important; }"
-
++ ".card.style-default.has-readmore .card-footer, .card.style-forest.has-readmore .card-footer, .card.style-leaf.has-readmore .card-footer { align-items: center !important; }"
++ ".card.style-default.has-readmore .read-more-btn, .card.style-forest.has-readmore .read-more-btn, .card.style-leaf.has-readmore .read-more-btn { display: inline-flex; align-items: center; padding-bottom: 0 !important; line-height: 1; }"
++ ".card.style-default.has-readmore .evid-branding, .card.style-forest.has-readmore .evid-branding, .card.style-leaf.has-readmore .evid-branding { align-items: center !important; padding-bottom: 0 !important; transform: none !important; }"
++ ".card.style-leaf .card-footer { padding-bottom: 2px; }"
 
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
       + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
