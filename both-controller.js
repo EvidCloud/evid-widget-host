@@ -1,4 +1,4 @@
-/* both-controller v4.9.96 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.993 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
