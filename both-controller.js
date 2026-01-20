@@ -905,13 +905,11 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
-      + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }" 
-       + ".card.style-default.review-card, .card.style-forest.review-card, .card.style-leaf.review-card{ padding-bottom: 6px !important; }"
-+ ".card.style-default.review-card.compact, .card.style-forest.review-card.compact, .card.style-leaf.review-card.compact{ padding-bottom: 6px !important; }"
-+ ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
-+ ".card.style-default.review-card, .card.style-forest.review-card, .card.style-leaf.review-card { padding-bottom: 8px !important; }"
++ ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 6px; padding-top: 6px; padding-bottom: 2px; box-sizing: border-box; gap: 10px; }"
++ ".card.review-card { padding-bottom: 6px !important; }"
++ ".card.review-card.compact { padding-bottom: 4px !important; }"
+       + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 + ".card.style-leaf.review-card.has-readmore { padding-bottom: 10px !important; }"
-+ ".card.style-default.review-card.compact, .card.style-forest.review-card.compact, .card.style-leaf.review-card.compact { padding-bottom: 6px !important; }"
 + ".card.style-leaf.review-card.compact.has-readmore { padding-bottom: 8px !important; }"
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
@@ -940,7 +938,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
 
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
-      + ".card.compact .card-footer { margin-top: 6px; padding-top: 4px; }"
++ ".card.compact .card-footer { margin-top: 4px; padding-top: 3px; padding-bottom: 1px; }"
       + ".card.compact .evid-logo-text { font-size: 10px; }" 
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
