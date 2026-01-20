@@ -906,6 +906,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
       + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 10px; padding-top: 8px; box-sizing: border-box; gap: 10px; }" 
+       + ".card.style-default.review-card, .card.style-forest.review-card, .card.style-leaf.review-card{ padding-bottom: 10px !important; }"
++ ".card.style-default.review-card.compact, .card.style-forest.review-card.compact, .card.style-leaf.review-card.compact{ padding-bottom: 6px !important; }"
 + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
