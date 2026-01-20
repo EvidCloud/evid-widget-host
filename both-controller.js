@@ -884,7 +884,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-exec .stars svg { display: inline-block !important; margin-inline-start: 6px; vertical-align: middle; }"
 
       // === Compact Mode Fixes ===
-      + ".card.compact { padding: 10px 12px !important; width: 260px !important; min-height: auto; }"
+      + ".card.compact { padding: 10px 12px 6px !important; width: 260px !important; min-height: auto; }"
       
       + ".card.compact .review-header { margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }"
       
@@ -909,6 +909,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
        + ".card.style-default.review-card, .card.style-forest.review-card, .card.style-leaf.review-card{ padding-bottom: 6px !important; }"
 + ".card.style-default.review-card.compact, .card.style-forest.review-card.compact, .card.style-leaf.review-card.compact{ padding-bottom: 6px !important; }"
 + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
++ ".card.style-default.review-card, .card.style-forest.review-card, .card.style-leaf.review-card { padding-bottom: 8px !important; }"
++ ".card.style-leaf.review-card.has-readmore { padding-bottom: 10px !important; }"
++ ".card.style-default.review-card.compact, .card.style-forest.review-card.compact, .card.style-leaf.review-card.compact { padding-bottom: 6px !important; }"
++ ".card.style-leaf.review-card.compact.has-readmore { padding-bottom: 8px !important; }"
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
       + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: none !important; white-space: nowrap; margin-top: 0 !important; }"
