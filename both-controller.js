@@ -907,8 +907,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
 + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 4px; padding-top: 4px; padding-bottom: 0px; box-sizing: border-box; gap: 10px; }"
 + ".card.compact .card-footer { margin-top: 2px; padding-top: 2px; padding-bottom: 0px; }"
-+ ".card.review-card { padding-bottom: 2px !important; }"
-+ ".card.review-card.compact { padding-bottom: 0px !important; }"
++ ".card.review-card { padding-bottom: 4px !important; }"
++ ".card.review-card.compact { padding-bottom: 2px !important; }"
        + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 + ".card.style-leaf.review-card.has-readmore { padding-bottom: 4px !important; }"
 + ".card.style-leaf.review-card.compact.has-readmore { padding-bottom: 2px !important; }"
@@ -925,8 +925,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".evid-mini-icon { width: 12px; height: 12px; display: inline-block; }"
 + ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 6px; }"
        + ".card.style-default.has-readmore .evid-mini-icon, .card.style-forest.has-readmore .evid-mini-icon, .card.style-leaf.has-readmore .evid-mini-icon{ top: 8px !important; }"
-       + ".evid-brand-logo { height: 22px; width: auto; display: block; }"
-+ ".card.compact .evid-brand-logo { height: 18px; }"
+       + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
++ ".card.compact .evid-brand-logo { height: 30px; }"
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
