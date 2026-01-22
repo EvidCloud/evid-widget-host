@@ -913,10 +913,11 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 + ".card.review-card.has-readmore { padding-bottom: 12px !important; }"
 + ".card.review-card.compact.has-readmore { padding-bottom: 2px !important; }"
        + ".card.compact.has-readmore .card-footer { margin-top: 2px; padding-top: 2px; padding-bottom: 0px !important; }"
-+ ".card.review-card:not(.compact):not(.has-readmore) { padding-bottom: 10px !important; }"
        + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 + ".card.style-leaf.review-card.has-readmore { padding-bottom: 12px !important; }"
 + ".card.style-leaf.review-card.compact.has-readmore { padding-bottom: 8px !important; }"
+      + ".card.review-card:not(.compact):not(.has-footer) { padding-bottom: 12px !important; }"
+
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
       + ".read-more-btn { font-size: 11px; font-weight: 700; cursor: pointer; background: transparent !important; border: none; padding: 0; text-decoration: none !important; white-space: nowrap; margin-top: 0 !important; }"
