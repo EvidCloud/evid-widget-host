@@ -1,4 +1,4 @@
-/* both-controller v4.9.993 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.9991 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -916,7 +916,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
        + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 + ".card.style-leaf.review-card.has-readmore { padding-bottom: 12px !important; }"
 + ".card.style-leaf.review-card.compact.has-readmore { padding-bottom: 8px !important; }"
-      + ".card.review-card:not(.compact):not(.has-footer) { padding-bottom: 12px !important; }"
+      + ".card.review-card:not(.compact):not(.has-footer) { padding-bottom: 20px !important; }"
 
 
       // הכפתור: רגיל, יושב בתחילת השורה (ימין בעברית)
