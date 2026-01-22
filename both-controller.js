@@ -1,4 +1,4 @@
-/* both-controller v4.9.9991 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v4.9.9993 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -926,9 +926,9 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".evid-branding { margin-inline-start: auto; display: flex; align-items: center; gap: 6px; text-decoration: none; opacity: 0.7; transition: opacity 0.2s; line-height: 1; white-space: nowrap; flex: 0 0 auto; }"
        + ".evid-branding:hover { opacity: 1; }"
       
-      + ".evid-powered-text { font-size: 11px; color: #2E2E2E; margin-inline-end: 2px; }" 
-      + ".evid-logo-text { font-weight: 800; font-size: 11px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
-      + ".evid-mini-icon { width: 14px; height: 14px; display: inline-block; }"
+      + ".evid-powered-text { font-size: 10px; color: #2E2E2E; margin-inline-end: 2px; }" 
+      + ".evid-logo-text { font-weight: 800; font-size: 12px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
+      + ".evid-mini-icon { width: 18px; height: 18px; display: inline-block; }"
 + ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 6px; }"
        + ".card.style-default.has-readmore .evid-mini-icon, .card.style-forest.has-readmore .evid-mini-icon, .card.style-leaf.has-readmore .evid-mini-icon{ top: 8px !important; }"
        + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
