@@ -906,12 +906,13 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
       // === FOOTER LAYOUT (תיקון סופי: כפתור בהתחלה, מיתוג בורח לסוף) ===
 + ".card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; width: 100%; margin-top: 4px; padding-top: 4px; padding-bottom: 0px; box-sizing: border-box; gap: 10px; }"
-+ ".card.compact .card-footer { margin-top: 2px; padding-top: 2px; padding-bottom: 0px; }"
++ ".card.compact.has-footer .card-footer { margin-top: 2px; padding-top: 2px; padding-bottom: 0px; }"
 + ".card.review-card { padding-bottom: 6px !important; }"
-+ ".card.review-card.compact { padding-bottom: 4px !important; }"
++ ".card.review-card.compact.has-footer { padding-bottom: 2px !important; }"
 
 + ".card.review-card.has-readmore { padding-bottom: 12px !important; }"
-+ ".card.review-card.compact.has-readmore { padding-bottom: 8px !important; }"
++ ".card.review-card.compact.has-readmore { padding-bottom: 2px !important; }"
+       + ".card.compact.has-readmore .card-footer { margin-top: 2px; padding-top: 2px; padding-bottom: 0px !important; }"
 + ".card.review-card:not(.compact):not(.has-readmore) { padding-bottom: 10px !important; }"
        + ".evid-powered-text, .evid-logo-text{line-height:1 !important;}"
 + ".card.style-leaf.review-card.has-readmore { padding-bottom: 12px !important; }"
@@ -944,7 +945,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
 
       // === COMPACT MODE FIXES (תיקון לצפיפות בקטן) ===
-+ ".card.compact .card-footer { margin-top: 4px; padding-top: 3px; padding-bottom: 1px; }"
       + ".card.compact .evid-logo-text { font-size: 10px; }" 
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
@@ -1533,6 +1533,15 @@ if (card) {
     card.classList.contains("style-forest") ||
     card.classList.contains("style-leaf"); // בלי exec
   card.classList.toggle("has-readmore", showButton && styleOk);
+   // ✅ Footer exists only when there is readmore OR branding
+const hasBranding = !!card.querySelector(".evid-branding"); // קיים רק אם SHOW_BRANDING מופעל
+const hasFooter = !!(showButton || hasBranding);
+
+card.classList.toggle("has-footer", hasFooter);
+
+const footerEl = card.querySelector(".card-footer");
+if (footerEl) footerEl.style.display = hasFooter ? "" : "none";
+
 }
 
 
