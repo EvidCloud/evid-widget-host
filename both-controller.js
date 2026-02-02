@@ -686,6 +686,20 @@ try {
     const TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
     const TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
 
+     // === MOBILE: force Classic (style-default) regardless of chosen design ===
+const __EVID_IS_MOBILE__ = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
+
+if (__EVID_IS_MOBILE__) {
+  // force classic
+  DYNAMIC_SETTINGS.cardStyle = "default";
+
+  // remove compact/large differences on mobile (always large)
+  DYNAMIC_SETTINGS.size = "large";
+
+  // ignore position settings on mobile (we'll stick to bottom via CSS)
+  DYNAMIC_SETTINGS.position = "bottom-right";
+}
+
     const SELECTED_FONT = DYNAMIC_SETTINGS.font;
     const WIDGET_POS = DYNAMIC_SETTINGS.position;
     const THEME_COLOR = DYNAMIC_SETTINGS.color;
@@ -949,6 +963,12 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-logo-text { font-size: 10px; }" 
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
+       + "@media (max-width: 480px){"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;width:100% !important;max-width:100% !important;padding:0 !important;margin:0 !important;display:flex !important;justify-content:center !important;z-index:2147483647 !important;}"
++ ".card{width:100% !important;max-width:100% !important;margin:0 !important;border-radius:16px 16px 0 0 !important;}"
++ ".xbtn{top:10px !important;}"
++ "}"
+
       ;
       ;    root.appendChild(style);
 
