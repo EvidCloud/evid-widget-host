@@ -964,8 +964,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;width:100% !important;max-width:100% !important;padding:0 !important;margin:0 !important;display:flex !important;justify-content:center !important;z-index:2147483647 !important;}"
-+ ".card{width:100% !important;max-width:100% !important;margin:0 !important;border-radius:16px 16px 0 0 !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;width:100% !important;max-width:100% !important;padding:0 10px !important;margin:0 !important;display:flex !important;justify-content:center !important;box-sizing:border-box !important;z-index:2147483647 !important;}"
++ ".card{width:calc(100% - 20px) !important;max-width:calc(100% - 20px) !important;margin:0 auto !important;border-radius:16px 16px 0 0 !important;box-sizing:border-box !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
 
