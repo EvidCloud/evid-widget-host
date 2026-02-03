@@ -968,7 +968,13 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 + ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
++ ".user-pill{flex:1;min-width:0;overflow:hidden;}"
++ ".name-col{min-width:0;overflow:hidden;}"
++ ".reviewer-name{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
++ ".reviewer-name.len-15{font-size:12px !important; line-height:1.15 !important;}"
++ ".reviewer-name.len-24{font-size:10.8px !important; line-height:1.12 !important;}"
 
+       
       ;
       ;    root.appendChild(style);
 
@@ -1633,6 +1639,13 @@ if (footerEl) footerEl.style.display = hasFooter ? "" : "none";
       const nm = document.createElement("span");
       nm.className = "reviewer-name";
       nm.textContent = item.authorName || "Anonymous";
+      const nameLen = (nm.textContent || "").trim().length;
+
+      if (nameLen > 23) {
+      nm.classList.add("len-24");
+      } else if (nameLen > 14) {
+      nm.classList.add("len-15");
+}
       nameCol.appendChild(nm);
       userPill.appendChild(nameCol);
 
