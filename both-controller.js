@@ -66,6 +66,38 @@
     } catch (_) {}
     return "";
   })();
+   function localDayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
+
+function trackViewOncePerDay(tenantId) {
+  try {
+    const id = String(tenantId || "").trim();
+    if (!id) return;
+
+    const day = localDayKey();
+    const k = `evid:viewed:${id}:${day}`;
+
+    try {
+      if (localStorage.getItem(k) === "1") return;
+      localStorage.setItem(k, "1");
+    } catch (e) {
+      // אם אין localStorage (נדיר), פשוט נוותר כדי לא לספור כפול
+      return;
+    }
+
+    const url =
+      `https://review-widget-psi.vercel.app/api/tenant` +
+      `?action=increment-view&slug=${encodeURIComponent(id)}&day=${encodeURIComponent(day)}`;
+
+    fetch(url, { method: "GET", mode: "cors", cache: "no-store", keepalive: true }).catch(() => {});
+  } catch (e) {}
+}
+
 
   // ---------- Utils ----------
    // אייקון גוגל לשימוש בכל העיצובים
@@ -352,13 +384,14 @@ async function loadBrandingFromServer(slugOrId) {
     return false;
   }
 }
+  trackViewOncePerDay(slugOrId);   
 // define once, in outer scope (prevents TDZ / scope issues)
 const widgetId = (__WIDGET_ID__ || "").trim();
 
     // ---- Firestore widget settings ----
      // ---- Public config (plan + branding + allowedOrigin) ----
 try {
-  const key = (CURRENT_SLUG || widgetId || "").trim();
+const key = (widgetId || CURRENT_SLUG || "").trim();
   if (key) {
     const ok = await loadBrandingFromServer(key);
 
