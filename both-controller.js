@@ -390,34 +390,27 @@ const widgetId = (__WIDGET_ID__ || "").trim();
 
     // ---- Firestore widget settings ----
      // ---- Public config (plan + branding + allowedOrigin) ----
-     let ok = true;
+    let ok = true;
 try {
   const key = (widgetId || CURRENT_SLUG || "").trim();
   const isPreview = (new URL(import.meta.url).searchParams.get("preview") === "1");
 
   // סופרים צפייה רק אם זה לא preview
-  if (key && !isPreview) {
-    trackViewOncePerDay(key);
-  }
+  if (key && !isPreview) trackViewOncePerDay(key);
 
   // את זה תמיד מריצים (גם ב-preview) כדי שהווידג'ט ייטען רגיל
-  if (key) {
-    ok = await loadBrandingFromServer(key);
-  }
+  if (key) ok = await loadBrandingFromServer(key);
 } catch (e) {}
 
+// אם חסום באתר הזה – מסירים ולא ממשיכים
+if (ok === false) {
+  try {
+    const el = document.getElementById("reviews-widget");
+    if (el) el.remove();
+  } catch {}
+  return;
+}
 
-    // אם חסום באתר הזה – מסירים ולא ממשיכים
-    // (מונע "שבור" על אתר אחר)
-    if (ok === false) {
-      try {
-        const el = document.getElementById("reviews-widget");
-        if (el) el.remove();
-      } catch {}
-      return;
-    }
-  }
-} catch (_) {}
 
     try {
       if (widgetId) {
