@@ -1,4 +1,4 @@
-/* both-controller v4.9.9993 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.0.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1332,7 +1332,7 @@ function buildClientContextText() {
     pickText(".breadcrumbs") ||
     pickText("ol.breadcrumb");
 
-  const ctx = (uniqJoin([h1, title, bc, desc], 900) || String(document.title || location.href || "")).trim();
+  const ctx = (uniqJoin([h1, title, bc, desc], 900) || String(document.title || pageUrl || location.href || "")).trim();
 
   const top = Math.max(1, Math.min(25, Number(topN) || 20));
 
