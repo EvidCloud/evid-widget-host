@@ -1332,7 +1332,7 @@ function buildClientContextText() {
     pickText(".breadcrumbs") ||
     pickText("ol.breadcrumb");
 
-  const ctx = uniqJoin([h1, title, bc, desc], 900);
+  const ctx = (uniqJoin([h1, title, bc, desc], 900) || String(document.title || location.href || "")).trim();
 
   const top = Math.max(1, Math.min(25, Number(topN) || 20));
 
@@ -1342,7 +1342,6 @@ function buildClientContextText() {
   const url =
     DEFAULT_REVIEWS_API_BASE +
     "?slug=" + encodeURIComponent(slug) +
-    "&url=" + encodeURIComponent(pageUrl) +
     "&ctx=" + encodeURIComponent(ctx) +
     "&fetchMissing=0" +
     "&limit=" + encodeURIComponent(limit) +
