@@ -952,7 +952,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .stars { display: flex !important; position: static !important; font-size: 12px !important; gap: 3px; margin: 0; flex-shrink: 0; margin-inline-start: auto; }"
       + ".card.compact .stars svg { width: 13px; height: 13px; }"
 
-      + "@media (max-width:480px){.wrap{right:0!important;left:0!important;width:100%!important;display:flex!important;justify-content:center!important}.card{width:95%!important;margin:0 auto 10px!important;}}"
       + ".purchase-card{display:flex;padding:0;height:85px;overflow:hidden; border-radius:12px;}"
       + ".card.style-forest.purchase-card{background:rgba(" + THEME_RGB + ", 0.95);}"
       + ".card.style-exec.purchase-card{border-radius:0; box-shadow:4px 4px 0 " + THEME_COLOR + ";}"
@@ -1002,10 +1001,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;height:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;box-sizing:border-box !important;pointer-events:none !important;z-index:999999 !important;}"
-+ ".wrap .card{pointer-events:auto !important;}"
-+ "}"
-+ ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom: var(--evid-ios-bottom, 0px) !important;top:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;box-sizing:border-box !important;pointer-events:none !important;z-index:2147483000 !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;}"
++ ".wrap .card{pointer-events:auto !important;width:calc(100vw - 12px) !important;max-width:520px !important;margin:0 !important;border-radius:16px 16px 0 0 !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
 + ".user-pill{flex:1;min-width:0;overflow:hidden;}"
@@ -1021,6 +1018,40 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     const wrap = document.createElement("div");
     wrap.className = "wrap";
     root.appendChild(wrap);
+     function setupIOSBottomVar(wrapEl) {
+  try {
+    if (!wrapEl) return;
+    const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+    if (!isiOS) return;
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    let raf = 0;
+
+    const update = () => {
+      raf = 0;
+      // יכול להיות שלילי/חיובי — וזה בדיוק מה שאנחנו צריכים
+      const delta = (window.innerHeight - vv.height - (vv.offsetTop || 0));
+      wrapEl.style.setProperty("--evid-ios-bottom", Math.round(delta) + "px");
+    };
+
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    };
+
+    update();
+
+    vv.addEventListener("resize", schedule);
+    vv.addEventListener("scroll", schedule);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", () => setTimeout(update, 80));
+  } catch (_) {}
+}
+
+setupIOSBottomVar(wrap);
     function setupMobileViewportVars(wrapEl) {
   try {
     if (!wrapEl) return;
@@ -1060,8 +1091,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     setInterval(setVars, 200);
   } catch (_) {}
 }
-// ✅ הפעלה פעם אחת
-setupMobileViewportVars(wrap);
+// ✅  כרגע לא מופעל זה יפריע לפונקציה שמעליה - הפעלה פעם אחת
+//setupMobileViewportVars(wrap);
 
     function renderMonogram(name) {
       const d = document.createElement("div");
