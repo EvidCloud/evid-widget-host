@@ -1062,9 +1062,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 // ✅ הפעלה פעם אחת
 setupMobileViewportVars(wrap);
 
-// ✅ הפעלה (בדיוק פעם אחת)
-setupMobileStickyBottom(wrap);
-
     function renderMonogram(name) {
       const d = document.createElement("div");
       d.className = "avatar-fallback";
