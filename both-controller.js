@@ -1002,8 +1002,9 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;top: var(--evid-vtop, 0px) !important;height: var(--evid-vh, 100vh) !important;bottom:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;align-items:flex-end !important;justify-content:center !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;box-sizing:border-box !important;pointer-events:none !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;height:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;box-sizing:border-box !important;pointer-events:none !important;z-index:999999 !important;}"
 + ".wrap .card{pointer-events:auto !important;}"
++ "}"
 + ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
@@ -1877,32 +1878,26 @@ brandLink.innerHTML = isRTL
     window.innerWidth <= 480;
 
   if (isMobile) {
-    // במובייל: לא נוגעים במיקום בכלל (CSS + visualViewport)
+    // במובייל לא נוגעים במיקום — ה-CSS אחראי
     wrap.style.top = "";
     wrap.style.bottom = "";
     wrap.style.left = "";
     wrap.style.right = "";
     return;
   }
-  // לא לגעת ב-position במובייל — ה-CSS + visualViewport קובעים
-  wrap.style.top = "";
-  wrap.style.bottom = "";
-  wrap.style.left = "";
-  wrap.style.right = "";
-  return;
+
+  // === DESKTOP positioning ===
+  wrap.style.top = "auto";
+  wrap.style.bottom = "auto";
+  wrap.style.left = "auto";
+  wrap.style.right = "auto";
+
+  if (String(WIDGET_POS).includes("top")) wrap.style.top = "20px";
+  else wrap.style.bottom = "20px";
+
+  if (String(WIDGET_POS).includes("left")) wrap.style.left = "20px";
+  else wrap.style.right = "20px";
 }
-
-      wrap.style.top = "auto";
-      wrap.style.bottom = "auto";
-      wrap.style.left = "auto";
-      wrap.style.right = "auto";
-
-      if (String(WIDGET_POS).includes("top")) wrap.style.top = "20px";
-      else wrap.style.bottom = "20px";
-
-      if (String(WIDGET_POS).includes("left")) wrap.style.left = "20px";
-      else wrap.style.right = "20px";
-    }
 
     function showNext(overrideDuration, preserveTimestamp) {
       if (!items.length || isDismissed) return;
