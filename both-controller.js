@@ -1,4 +1,4 @@
-/* both-controller v5.1.1 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.1.2 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1002,7 +1002,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom: env(safe-area-inset-bottom, 0px) !important;top:auto !important;width:100vw !important;max-width:100vw !important;padding:0 !important;margin:0 !important;display:block !important;box-sizing:border-box !important;overflow:hidden !important;transform: translate3d(0, calc(-1 * var(--evid-vv-bottom, 0px)), 0) translateX(2px) !important;transition: transform 140ms ease-out !important;will-change: transform;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;top: var(--evid-vtop, 0px) !important;bottom:auto !important;height: var(--evid-vh, 100vh) !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;align-items:flex-end !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;pointer-events:none !important;box-sizing:border-box !important;transform: translateX(2px) !important;}"
 + ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
@@ -1019,78 +1019,48 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     const wrap = document.createElement("div");
     wrap.className = "wrap";
     root.appendChild(wrap);
-     function setupMobileStickyBottom(wrapEl) {
+     function setupMobileViewportVars(wrapEl) {
   try {
     if (!wrapEl) return;
     const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
     if (!isMobile) return;
 
     const vv = window.visualViewport;
-    if (!vv) {
-      // fallback: אין visualViewport (נדיר) → לא עושים כלום
-      wrapEl.style.setProperty("--evid-vv-bottom", "0px");
-      return;
-    }
 
-    let maxVVH = vv.height || 0;
-    let last = -1;
+    const setVars = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      const top = vv ? (vv.offsetTop || 0) : 0;
+
+      wrapEl.style.setProperty("--evid-vh", Math.round(h) + "px");
+      wrapEl.style.setProperty("--evid-vtop", Math.round(Math.max(0, top)) + "px");
+    };
+
+    setVars();
+
     let raf = 0;
-    let stopTimer = 0;
-    let running = false;
-
-    const computeOffset = () => {
-      // max height seen = מצב שהבר נעלם
-      maxVVH = Math.max(maxVVH, vv.height || 0);
-
-      // כשבר קיים → vv.height קטן → off חיובי
-      const off = Math.max(0, maxVVH - (vv.height || 0));
-
-      // ניקוי רעידות פיקסל
-      return Math.round(off);
-    };
-
-    const apply = () => {
-      const off = computeOffset();
-      if (off === last) return;
-      last = off;
-      wrapEl.style.setProperty("--evid-vv-bottom", off + "px");
-    };
-
-    const tick = () => {
-      raf = 0;
-      apply();
-      if (running) raf = requestAnimationFrame(tick);
-    };
-
-    const start = () => {
-      if (running) return;
-      running = true;
-      apply();
-      raf = requestAnimationFrame(tick);
-    };
-
-    const stopSoon = () => {
-      clearTimeout(stopTimer);
-      stopTimer = setTimeout(() => {
-        running = false;
-        if (raf) cancelAnimationFrame(raf);
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
         raf = 0;
-        apply(); // final snap
-      }, 220);
+        setVars();
+      });
     };
 
-    // initial
-    start();
-    stopSoon();
+    if (vv) {
+      vv.addEventListener("resize", schedule);
+      vv.addEventListener("scroll", schedule);
+    }
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", () => setTimeout(schedule, 80));
 
-    // events
-    vv.addEventListener("resize", () => { start(); stopSoon(); });
-    vv.addEventListener("scroll",  () => { start(); stopSoon(); });
-    window.addEventListener("scroll", () => { start(); stopSoon(); }, { passive: true });
-    window.addEventListener("resize", () => { start(); stopSoon(); });
-    window.addEventListener("orientationchange", () => setTimeout(() => { start(); stopSoon(); }, 80));
+    // iOS לפעמים לא יורה events כשהבר נעלם/חוזר → פולינג קטן ובטוח
+    setInterval(setVars, 250);
   } catch (_) {}
 }
+
+// ✅ הפעלה פעם אחת
+setupMobileViewportVars(wrap);
 
 // ✅ הפעלה (בדיוק פעם אחת)
 setupMobileStickyBottom(wrap);
