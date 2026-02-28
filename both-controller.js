@@ -1871,19 +1871,19 @@ brandLink.innerHTML = isRTL
       return card;
     }
 
-    function positionWrap() {
-       // ✅ MOBILE: אל תיגע בכלל ב-bottom/left/right ב-JS. ה-CSS + visualViewport אחראים.
-try {
-  if (window.matchMedia && window.matchMedia("(max-width: 480px)").matches) {
+   function positionWrap() {
+  const isMobile =
+    (window.matchMedia && window.matchMedia("(max-width: 480px)").matches) ||
+    window.innerWidth <= 480;
+
+  if (isMobile) {
+    // במובייל: לא נוגעים במיקום בכלל (CSS + visualViewport)
     wrap.style.top = "";
     wrap.style.bottom = "";
     wrap.style.left = "";
     wrap.style.right = "";
     return;
   }
-} catch (_) {}
-      const isMobile = window.innerWidth <= 480;
-      if (isMobile) {
   // לא לגעת ב-position במובייל — ה-CSS + visualViewport קובעים
   wrap.style.top = "";
   wrap.style.bottom = "";
