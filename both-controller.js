@@ -1002,7 +1002,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;width:100vw !important;max-width:100vw !important;padding:0 !important;margin:0 !important;display:block !important;box-sizing:border-box !important;overflow:hidden !important;transform:translateX(2px) !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom: calc(env(safe-area-inset-bottom, 0px) + var(--evid-vv-bottom, 0px)) !important;top:auto !important;width:100vw !important;max-width:100vw !important;padding:0 !important;margin:0 !important;display:block !important;box-sizing:border-box !important;overflow:hidden !important;transform:translateX(2px) !important;}"
 + ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
@@ -1019,6 +1019,45 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     const wrap = document.createElement("div");
     wrap.className = "wrap";
     root.appendChild(wrap);
+     function setupMobileStickyBottom(wrapEl) {
+  try {
+    if (!wrapEl) return;
+    const vv = window.visualViewport;
+    let raf = 0;
+
+    const update = () => {
+      // offset ש”דוחף למעלה” כשיש UI (address bar / keyboard), ויורד חזרה ל-0 כשהוא נעלם
+      const offset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      wrapEl.style.setProperty("--evid-vv-bottom", offset + "px");
+    };
+
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        update();
+      });
+    };
+
+    update();
+
+    if (vv) {
+      vv.addEventListener("resize", schedule);
+      vv.addEventListener("scroll", schedule);
+    }
+
+    // fallback – יש מצבים ב-iOS שלא מפעילים vv events תמיד
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("orientationchange", () => setTimeout(schedule, 80));
+  } catch (_) {}
+}
+
+// להפעיל רק במובייל
+try {
+  const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
+  if (isMobile) setupMobileStickyBottom(wrap);
+} catch (_) {}
 
     function renderMonogram(name) {
       const d = document.createElement("div");
