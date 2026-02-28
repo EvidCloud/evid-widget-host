@@ -1031,16 +1031,20 @@ let maxClientH = document.documentElement.clientHeight || 0;
     const computeOffset = () => {
   if (!vv) return 0;
 
-  // שומרים את הגובה המקסימלי שראינו (כשבר נעלם)
+  // baseline = הגובה הכי גדול שראינו (כשבר נעלם)
   maxInnerH = Math.max(maxInnerH, window.innerHeight || 0);
   maxClientH = Math.max(maxClientH, document.documentElement.clientHeight || 0);
+  const baseline = Math.max(maxInnerH, maxClientH);
 
-  const baseline = Math.max(maxInnerH, maxClientH); // הכי יציב באייפון
-  const visible = vv.height + (vv.offsetTop || 0);
+  // ב-iOS offsetTop יכול להיות שלילי/קופצני בזמן hide/show של הברים
+  const safeTop = Math.max(0, vv.offsetTop || 0);
+  const visible = vv.height + safeTop;
 
-  // כמה חסר לנו לתחתית ה"אמיתית"
+  // אם הבר נעלם (גובה כמעט מקסימלי) → חייב להיות 0 (להיצמד לתחתית האמיתית)
+  if (vv.height >= baseline - 2) return 0;
+
+  // כמה חסר לתחתית
   const off = Math.max(0, baseline - visible);
-
   return Math.round(off);
 };
     const apply = () => {
