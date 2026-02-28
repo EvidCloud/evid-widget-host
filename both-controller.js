@@ -1024,10 +1024,25 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     if (!wrapEl) return;
     const vv = window.visualViewport;
     let raf = 0;
+    let last = -1;
 
-    const update = () => {
-      // offset ש”דוחף למעלה” כשיש UI (address bar / keyboard), ויורד חזרה ל-0 כשהוא נעלם
-      const offset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+    const computeOffset = () => {
+      if (!vv) return 0;
+
+      // baseline יציב יותר ב-iOS מאשר innerHeight
+      const baseH = document.documentElement.clientHeight;
+
+      // כמה “נגרע” מהגובה בגלל UI (address bar / keyboard)
+      const off = Math.max(0, baseH - vv.height);
+
+      // מנקה רעידות של 1px
+      return Math.round(off);
+    };
+
+    const apply = () => {
+      const offset = computeOffset();
+      if (offset === last) return;
+      last = offset;
       wrapEl.style.setProperty("--evid-vv-bottom", offset + "px");
     };
 
@@ -1035,25 +1050,25 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        update();
+        apply();
       });
     };
 
-    update();
+    apply();
 
     if (vv) {
       vv.addEventListener("resize", schedule);
+      // scroll של visualViewport לפעמים יוצר ג'יטר; משאירים רק כ-fallback עדין
       vv.addEventListener("scroll", schedule);
     }
 
-    // fallback – יש מצבים ב-iOS שלא מפעילים vv events תמיד
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     window.addEventListener("orientationchange", () => setTimeout(schedule, 80));
+    document.addEventListener("visibilitychange", () => setTimeout(schedule, 80));
   } catch (_) {}
 }
 
-// להפעיל רק במובייל
 try {
   const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
   if (isMobile) setupMobileStickyBottom(wrap);
