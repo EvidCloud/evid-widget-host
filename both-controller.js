@@ -1,4 +1,4 @@
-/* both-controller v5.0.4 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.0.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1025,20 +1025,24 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     const vv = window.visualViewport;
     let raf = 0;
     let last = -1;
+     let maxInnerH = window.innerHeight || 0;
+let maxClientH = document.documentElement.clientHeight || 0;
 
     const computeOffset = () => {
-      if (!vv) return 0;
+  if (!vv) return 0;
 
-      // baseline יציב יותר ב-iOS מאשר innerHeight
-      const baseH = document.documentElement.clientHeight;
+  // שומרים את הגובה המקסימלי שראינו (כשבר נעלם)
+  maxInnerH = Math.max(maxInnerH, window.innerHeight || 0);
+  maxClientH = Math.max(maxClientH, document.documentElement.clientHeight || 0);
 
-      // כמה “נגרע” מהגובה בגלל UI (address bar / keyboard)
-      const off = Math.max(0, baseH - vv.height);
+  const baseline = Math.max(maxInnerH, maxClientH); // הכי יציב באייפון
+  const visible = vv.height + (vv.offsetTop || 0);
 
-      // מנקה רעידות של 1px
-      return Math.round(off);
-    };
+  // כמה חסר לנו לתחתית ה"אמיתית"
+  const off = Math.max(0, baseline - visible);
 
+  return Math.round(off);
+};
     const apply = () => {
       const offset = computeOffset();
       if (offset === last) return;
