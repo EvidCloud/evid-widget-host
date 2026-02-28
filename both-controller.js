@@ -898,8 +898,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 
       + ".review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}"
       + ".user-pill{display:flex;align-items:center;gap:10px;}"
-      + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 100%);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"
-      + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
+      + ".review-avatar,.avatar-fallback{width:36px;height:36px;border-radius:50%;background:rgba(" + THEME_RGB + ", 0.15);color:" + THEME_COLOR + ";border:1px solid " + THEME_COLOR + ";font-size:14px;font-weight:700;display:grid;place-items:center;object-fit:cover;flex-shrink:0;}"      + ".name-col{display:flex;flex-direction:column; justify-content:center;}"
       + ".reviewer-name{font-size:14px;font-weight:700;color:#1e293b;line-height:1.2;}"
       
       + ".review-text{font-size:13px;line-height:1.5;color:#334155;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}"
