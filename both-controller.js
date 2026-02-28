@@ -1,4 +1,4 @@
-/* both-controller v5.0.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.1.1 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1022,59 +1022,78 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
      function setupMobileStickyBottom(wrapEl) {
   try {
     if (!wrapEl) return;
+    const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
+    if (!isMobile) return;
+
     const vv = window.visualViewport;
-     let maxVVH = vv ? vv.height : 0;
-    let raf = 0;
-    let last = -1;
-     let maxInnerH = window.innerHeight || 0;
-let maxClientH = document.documentElement.clientHeight || 0;
-
-    const computeOffset = () => {
-  if (!vv) return 0;
-
-  // שומרים את הגובה המקסימלי שראינו (כשהבר נעלם)
-  maxVVH = Math.max(maxVVH, vv.height);
-
-  // כמה "חסר" בגובה בגלל ה-UI (address bar / bottom bar / keyboard)
-  const off = Math.max(0, maxVVH - vv.height);
-
-  // ניקוי רעידות
-  return Math.round(off);
-};
-    const apply = () => {
-      const offset = computeOffset();
-      if (offset === last) return;
-      last = offset;
-      wrapEl.style.setProperty("--evid-vv-bottom", offset + "px");
-    };
-
-    const schedule = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        apply();
-      });
-    };
-
-    apply();
-
-    if (vv) {
-      vv.addEventListener("resize", schedule);
-      // scroll של visualViewport לפעמים יוצר ג'יטר; משאירים רק כ-fallback עדין
-      vv.addEventListener("scroll", schedule);
+    if (!vv) {
+      // fallback: אין visualViewport (נדיר) → לא עושים כלום
+      wrapEl.style.setProperty("--evid-vv-bottom", "0px");
+      return;
     }
 
-    window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", schedule);
-    window.addEventListener("orientationchange", () => setTimeout(schedule, 80));
-    document.addEventListener("visibilitychange", () => setTimeout(schedule, 80));
+    let maxVVH = vv.height || 0;
+    let last = -1;
+    let raf = 0;
+    let stopTimer = 0;
+    let running = false;
+
+    const computeOffset = () => {
+      // max height seen = מצב שהבר נעלם
+      maxVVH = Math.max(maxVVH, vv.height || 0);
+
+      // כשבר קיים → vv.height קטן → off חיובי
+      const off = Math.max(0, maxVVH - (vv.height || 0));
+
+      // ניקוי רעידות פיקסל
+      return Math.round(off);
+    };
+
+    const apply = () => {
+      const off = computeOffset();
+      if (off === last) return;
+      last = off;
+      wrapEl.style.setProperty("--evid-vv-bottom", off + "px");
+    };
+
+    const tick = () => {
+      raf = 0;
+      apply();
+      if (running) raf = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      apply();
+      raf = requestAnimationFrame(tick);
+    };
+
+    const stopSoon = () => {
+      clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => {
+        running = false;
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        apply(); // final snap
+      }, 220);
+    };
+
+    // initial
+    start();
+    stopSoon();
+
+    // events
+    vv.addEventListener("resize", () => { start(); stopSoon(); });
+    vv.addEventListener("scroll",  () => { start(); stopSoon(); });
+    window.addEventListener("scroll", () => { start(); stopSoon(); }, { passive: true });
+    window.addEventListener("resize", () => { start(); stopSoon(); });
+    window.addEventListener("orientationchange", () => setTimeout(() => { start(); stopSoon(); }, 80));
   } catch (_) {}
 }
 
-try {
-  const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
-  if (isMobile) setupMobileStickyBottom(wrap);
-} catch (_) {}
+// ✅ הפעלה (בדיוק פעם אחת)
+setupMobileStickyBottom(wrap);
 
     function renderMonogram(name) {
       const d = document.createElement("div");
@@ -1886,6 +1905,16 @@ brandLink.innerHTML = isRTL
     }
 
     function positionWrap() {
+       // ✅ MOBILE: אל תיגע בכלל ב-bottom/left/right ב-JS. ה-CSS + visualViewport אחראים.
+try {
+  if (window.matchMedia && window.matchMedia("(max-width: 480px)").matches) {
+    wrap.style.top = "";
+    wrap.style.bottom = "";
+    wrap.style.left = "";
+    wrap.style.right = "";
+    return;
+  }
+} catch (_) {}
       const isMobile = window.innerWidth <= 480;
       if (isMobile) {
         wrap.style.top = "auto";
