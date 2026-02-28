@@ -1023,6 +1023,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
   try {
     if (!wrapEl) return;
     const vv = window.visualViewport;
+     let maxVVH = vv ? vv.height : 0;
     let raf = 0;
     let last = -1;
      let maxInnerH = window.innerHeight || 0;
@@ -1031,20 +1032,13 @@ let maxClientH = document.documentElement.clientHeight || 0;
     const computeOffset = () => {
   if (!vv) return 0;
 
-  // baseline = הגובה הכי גדול שראינו (כשבר נעלם)
-  maxInnerH = Math.max(maxInnerH, window.innerHeight || 0);
-  maxClientH = Math.max(maxClientH, document.documentElement.clientHeight || 0);
-  const baseline = Math.max(maxInnerH, maxClientH);
+  // שומרים את הגובה המקסימלי שראינו (כשהבר נעלם)
+  maxVVH = Math.max(maxVVH, vv.height);
 
-  // ב-iOS offsetTop יכול להיות שלילי/קופצני בזמן hide/show של הברים
-  const safeTop = Math.max(0, vv.offsetTop || 0);
-  const visible = vv.height + safeTop;
+  // כמה "חסר" בגובה בגלל ה-UI (address bar / bottom bar / keyboard)
+  const off = Math.max(0, maxVVH - vv.height);
 
-  // אם הבר נעלם (גובה כמעט מקסימלי) → חייב להיות 0 (להיצמד לתחתית האמיתית)
-  if (vv.height >= baseline - 2) return 0;
-
-  // כמה חסר לתחתית
-  const off = Math.max(0, baseline - visible);
+  // ניקוי רעידות
   return Math.round(off);
 };
     const apply = () => {
@@ -1897,7 +1891,7 @@ brandLink.innerHTML = isRTL
         wrap.style.top = "auto";
         wrap.style.left = "0px";
         wrap.style.right = "0px";
-        wrap.style.bottom = "10px";
+        wrap.style.bottom = "0px";
         return;
       }
 
