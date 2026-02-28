@@ -1002,7 +1002,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;top: var(--evid-vtop, 0px) !important;bottom:auto !important;height: var(--evid-vh, 100vh) !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;align-items:flex-end !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;pointer-events:none !important;box-sizing:border-box !important;transform: translateX(2px) !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;top: var(--evid-vtop, 0px) !important;height: var(--evid-vh, 100vh) !important;bottom:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;align-items:flex-end !important;justify-content:center !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;box-sizing:border-box !important;pointer-events:none !important;}"
++ ".wrap .card{pointer-events:auto !important;}"
 + ".card{width:calc(100vw + 2px) !important;max-width:calc(100vw + 2px) !important;margin:0 !important;box-sizing:border-box !important;border-radius:16px 16px 0 0 !important;transform:translateX(-2px) !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
@@ -1019,7 +1020,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     const wrap = document.createElement("div");
     wrap.className = "wrap";
     root.appendChild(wrap);
-     function setupMobileViewportVars(wrapEl) {
+    function setupMobileViewportVars(wrapEl) {
   try {
     if (!wrapEl) return;
     const isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
@@ -1035,8 +1036,6 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       wrapEl.style.setProperty("--evid-vtop", Math.round(Math.max(0, top)) + "px");
     };
 
-    setVars();
-
     let raf = 0;
     const schedule = () => {
       if (raf) return;
@@ -1046,6 +1045,8 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       });
     };
 
+    setVars();
+
     if (vv) {
       vv.addEventListener("resize", schedule);
       vv.addEventListener("scroll", schedule);
@@ -1054,11 +1055,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     window.addEventListener("resize", schedule);
     window.addEventListener("orientationchange", () => setTimeout(schedule, 80));
 
-    // iOS לפעמים לא יורה events כשהבר נעלם/חוזר → פולינג קטן ובטוח
-    setInterval(setVars, 250);
+    // iOS לפעמים לא יורה events → פולינג קטן
+    setInterval(setVars, 200);
   } catch (_) {}
 }
-
 // ✅ הפעלה פעם אחת
 setupMobileViewportVars(wrap);
 
@@ -1884,12 +1884,13 @@ try {
 } catch (_) {}
       const isMobile = window.innerWidth <= 480;
       if (isMobile) {
-        wrap.style.top = "auto";
-        wrap.style.left = "0px";
-        wrap.style.right = "0px";
-        wrap.style.bottom = "0px";
-        return;
-      }
+  // לא לגעת ב-position במובייל — ה-CSS + visualViewport קובעים
+  wrap.style.top = "";
+  wrap.style.bottom = "";
+  wrap.style.left = "";
+  wrap.style.right = "";
+  return;
+}
 
       wrap.style.top = "auto";
       wrap.style.bottom = "auto";
