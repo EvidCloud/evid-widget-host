@@ -1395,6 +1395,162 @@ function buildClientContextText() {
     if (txt.length > maxLen) txt = txt.slice(0, maxLen).trim();
     return txt;
   }
+  function cleanCtxText(s) {
+  return String(s || "")
+    // רעשים שראינו בפועל
+    .replace(/Please wait,\s*copying in progress\.*\s*/gi, " ")
+    // רעשים נפוצים (עברית/אנגלית)
+    .replace(/\b(add to cart|buy now|checkout|login|register|menu|search)\b/gi, " ")
+    .replace(/\b(הוסף לסל|הוספה לסל|קנה עכשיו|לתשלום|התחברות|הרשמה|תפריט|חיפוש)\b/gi, " ")
+    // ניקוי כללי
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getMeta(nameOrProp) {
+  const byName = document.querySelector(`meta[name="${nameOrProp}"]`);
+  const byProp = document.querySelector(`meta[property="${nameOrProp}"]`);
+  return cleanCtxText((byName && byName.getAttribute("content")) || (byProp && byProp.getAttribute("content")) || "");
+}
+
+function pickManyText(selectors, maxItems = 10) {
+  const out = [];
+  for (const sel of selectors) {
+    try {
+      const nodes = Array.from(document.querySelectorAll(sel)).slice(0, maxItems);
+      for (const n of nodes) {
+        const t = cleanCtxText(n.textContent || "");
+        if (t) out.push(t);
+      }
+    } catch (_) {}
+  }
+  return out;
+}
+
+function parseJsonLdProduct() {
+  try {
+    const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]')).slice(0, 8);
+    for (const sc of scripts) {
+      const raw = (sc.textContent || "").trim();
+      if (!raw) continue;
+      let json;
+      try { json = JSON.parse(raw); } catch { continue; }
+
+      const arr = Array.isArray(json) ? json : [json];
+      for (const item of arr) {
+        if (!item) continue;
+        const t = item["@type"];
+        const types = Array.isArray(t) ? t : [t];
+        if (!types.map(String).includes("Product")) continue;
+
+        const name = cleanCtxText(item.name || "");
+        const brand = cleanCtxText(item.brand?.name || item.brand || "");
+        const sku = cleanCtxText(item.sku || item.mpn || "");
+        const category = cleanCtxText(item.category || "");
+        const desc = cleanCtxText(item.description || "");
+        const price = cleanCtxText(item.offers?.price || item.offers?.lowPrice || "");
+        const currency = cleanCtxText(item.offers?.priceCurrency || "");
+
+        return {
+          name,
+          brand,
+          sku,
+          category,
+          desc,
+          price: price && currency ? `${price} ${currency}` : price,
+        };
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+function buildSmartCtx({ pageUrl }) {
+  // 1) בסיס יציב (og עדיף על title במלא אתרים)
+  const ogTitle = getMeta("og:title");
+  const ogDesc = getMeta("og:description");
+  const metaDesc = getMeta("description");
+  const title = cleanCtxText(ogTitle || document.title || "");
+  const desc = cleanCtxText(ogDesc || metaDesc || "");
+
+  // 2) H1 (מוצר)
+  const h1 =
+    cleanCtxText(pickText("h1")) ||
+    cleanCtxText(pickText(".product_title")) ||
+    cleanCtxText(pickText(".product__title")) ||
+    "";
+
+  // 3) Breadcrumbs (כמה שיותר “נקי”)
+  const crumbs = cleanCtxText(
+    (pickManyText(
+      [
+        'nav[aria-label*="breadcrumb"]',
+        ".breadcrumb",
+        ".breadcrumbs",
+        "ol.breadcrumb",
+        ".woocommerce-breadcrumb",
+        ".woocommerce-breadcrumb a",
+      ],
+      12
+    ).join(" | ")) || ""
+  );
+
+  // 4) Product signals (Woo/Shopify/common)
+  const wcShort = cleanCtxText(pickText(".woocommerce-product-details__short-description"));
+  const shopifyDesc = cleanCtxText(pickText(".product__description"));
+  const price =
+    cleanCtxText(pickText(".summary .price")) ||
+    cleanCtxText(pickText(".price")) ||
+    cleanCtxText(getMeta("product:price:amount")) ||
+    "";
+  const brand =
+    cleanCtxText(pickText('[itemprop="brand"]')) ||
+    cleanCtxText(getMeta("product:brand")) ||
+    "";
+  const sku =
+    cleanCtxText(pickText(".sku")) ||
+    cleanCtxText(pickText('[itemprop="sku"]')) ||
+    "";
+
+  // 5) Schema.org Product (אם קיים – זה זהב)
+  const ld = parseJsonLdProduct();
+
+  // 6) מאפיינים/Specs (למשל חומר/מידות)
+  const attrs = pickManyText(
+    [
+      ".woocommerce-product-attributes-item__label",
+      ".woocommerce-product-attributes-item__value",
+      ".product_meta",
+      ".posted_in a",
+      ".tagged_as a",
+    ],
+    12
+  );
+
+  const parts = [];
+
+  // עוזר ל-retrieval: שמים את החזק ראשון
+  if (ld?.name) parts.push(`מוצר: ${ld.name}`);
+  if (h1) parts.push(`כותרת: ${h1}`);
+  if (title && title !== h1) parts.push(`Title: ${title}`);
+
+  if (ld?.brand || brand) parts.push(`מותג: ${ld?.brand || brand}`);
+  if (ld?.sku || sku) parts.push(`SKU: ${ld?.sku || sku}`);
+  if (ld?.category) parts.push(`קטגוריה: ${ld.category}`);
+  if (crumbs) parts.push(`Breadcrumbs: ${crumbs}`);
+
+  const descBest = ld?.desc || wcShort || shopifyDesc || desc;
+  if (descBest) parts.push(`תיאור: ${descBest}`);
+
+  if (ld?.price || price) parts.push(`מחיר: ${ld?.price || price}`);
+
+  if (attrs.length) parts.push(`מאפיינים: ${attrs.join(" | ")}`);
+
+  // fallback אם הכל יצא ריק
+  const baseFallback = cleanCtxText(document.title || pageUrl || location.href || "");
+  const ctxText = cleanCtxText(uniqJoin(parts, 1200) || baseFallback);
+  return ctxText.slice(0, 1200);
+}     
 
   const h1 = pickText("h1");
   const title = String(document.title || "").trim();
@@ -1405,8 +1561,7 @@ function buildClientContextText() {
     pickText(".breadcrumbs") ||
     pickText("ol.breadcrumb");
 
-  const ctx = (uniqJoin([h1, title, bc, desc], 900) || String(document.title || pageUrl || location.href || "")).trim();
-
+  const ctx = buildSmartCtx({ pageUrl });
   const top = Math.max(1, Math.min(25, Number(topN) || 20));
 
   // IMPORTANT: ask backend to scan more candidates for ranking
