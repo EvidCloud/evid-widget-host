@@ -1027,43 +1027,37 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     if (!vv) return;
 
     let raf = 0;
-     let lastSet = 0;          // הערך האחרון ששמנו ל--evid-ios-bottom
-const DEAD_PX = 2;        // מתחת לזה לא מזיזים (מונע קפיצות)
-const UPDATE_UP_PX = 10;  // מרווח ביטחון למעלה (8–14 לפי טעם)
-const MAX_ADJUST_PX = 160;
 
-    const UPDATE_UP_PX = 10;     // תעלה/תרד פה אם צריך (6–14)
-const MAX_ADJUST_PX = 160;   // הגבלת בטיחות
+    // baseline: גובה כשבר פתוח (קטן יותר)
+    let barVVH = vv.height || 0;
 
-const update = () => {
-  raf = 0;
+    // כוונון: כמה "להרים" כדי שלא ייחתך כשבר נעלם
+    const RAISE_PX = 10;     // תנסה 8–14
+    const MAX_DOWN_PX = 70;  // מגביל כמה למטה מותר "לרדת" (שלילי)
 
-  const vvH = (vv && vv.height) ? vv.height : window.innerHeight;
+    const update = () => {
+      raf = 0;
 
-  const rect = wrapEl.getBoundingClientRect();
-  if (!rect || rect.height < 10) return;
+      const h = vv.height || 0;
+      if (!h) return;
 
-  // איפה אנחנו רוצים שהקצה התחתון יהיה (קצת מעל התחתית)
-  const desiredBottom = vvH - UPDATE_UP_PX;
+      // אם הגובה ירד קצת (בר חזר) — מעדכנים baseline
+      // אבל לא מעדכנים בזמן מקלדת (ירידה גדולה מדי)
+      const drop = barVVH - h;
+      if (h < barVVH && drop <= 140) barVVH = h;
 
-  // error>0 => הווידג'ט נמוך מדי (נחתך) => צריך לעלות => להגדיל bottom
-  // error<0 => הווידג'ט גבוה מדי (מרחף) => צריך לרדת => להקטין bottom (יותר שלילי)
-  const error = rect.bottom - desiredBottom;
+      // כשהבר נעלם: h גדל -> barVVH - h שלילי -> צריך לרדת (bottom שלילי)
+      let shift = Math.min(0, barVVH - h);
 
-  // deadband: אם אנחנו קרובים מספיק, לא נוגעים (מפסיק רעידות)
-  if (Math.abs(error) <= DEAD_PX) return;
+      // "להרים קצת" כדי שלא ייחתך
+      shift = Math.min(0, shift + RAISE_PX);
 
-  let next = lastSet + Math.round(error);
+      // לא לתת לרדת יותר מדי
+      shift = Math.max(-MAX_DOWN_PX, shift);
 
-  // clamp בטיחות
-  next = Math.max(-MAX_ADJUST_PX, Math.min(MAX_ADJUST_PX, next));
+      wrapEl.style.setProperty("--evid-ios-bottom", Math.round(shift) + "px");
+    };
 
-  // אם השינוי קטן מדי, לא לעדכן
-  if (Math.abs(next - lastSet) <= 1) return;
-
-  lastSet = next;
-  wrapEl.style.setProperty("--evid-ios-bottom", next + "px");
-};
     const schedule = () => {
       if (raf) return;
       raf = requestAnimationFrame(update);
@@ -1076,7 +1070,9 @@ const update = () => {
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     window.addEventListener("orientationchange", () => setTimeout(update, 80));
-     setInterval(schedule, 250);
+
+    // iOS לפעמים לא יורה events בזמן ה-anime של הבר
+    setInterval(schedule, 250);
   } catch (_) {}
 }
 
