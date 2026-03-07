@@ -1024,27 +1024,33 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     if (!isiOS) return;
 
     const vv = window.visualViewport;
-     let barVVH = vv.height || 0; // baseline: גובה כשבר פתוח (קטן יותר)
     if (!vv) return;
 
     let raf = 0;
 
-    const update = () => {
+    const UPDATE_UP_PX = 10;     // תעלה/תרד פה אם צריך (6–14)
+const MAX_ADJUST_PX = 160;   // הגבלת בטיחות
+
+const update = () => {
   raf = 0;
 
-  const h = vv.height || 0;
-  if (!h) return;
+  const vvH = (vv && vv.height) ? vv.height : window.innerHeight;
 
-  // עדכון baseline רק לירידה "קטנה" (בר פתוח/סגור), לא מקלדת
-  const drop = barVVH - h;
-  if (h < barVVH && drop <= 140) barVVH = h;
+  const rect = wrapEl.getBoundingClientRect();
+  if (!rect || rect.height < 10) return;
 
-  // כשהבר נעלם: h גדל -> barVVH - h שלילי -> bottom שלילי -> יורד לתחתית החדשה
-  const shift = Math.min(0, barVVH - h);
+  // gap > 0  => הווידג'ט "מרחף" למעלה (צריך לרדת)
+  // gap < 0  => הווידג'ט ירד יותר מדי (צריך לעלות)
+  const gap = vvH - rect.bottom;
 
-  wrapEl.style.setProperty("--evid-ios-bottom", Math.round(shift) + "px");
+  // bottom חיובי מרים למעלה; שלילי מוריד למטה
+  let next = Math.round((-gap) + UPDATE_UP_PX);
+
+  // clamp כדי שלא נעשה קפיצות הזויות (keyboard וכו')
+  next = Math.max(-MAX_ADJUST_PX, Math.min(MAX_ADJUST_PX, next));
+
+  wrapEl.style.setProperty("--evid-ios-bottom", next + "px");
 };
-
     const schedule = () => {
       if (raf) return;
       raf = requestAnimationFrame(update);
