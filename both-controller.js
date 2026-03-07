@@ -1000,7 +1000,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       + ".card.compact .evid-mini-icon { width: 10px; height: 10px; }"
       + ".card.compact .read-more-btn { font-size: 10px; }"
        + "@media (max-width: 480px){"
-+ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom: var(--evid-ios-bottom, 0px) !important;top:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;box-sizing:border-box !important;pointer-events:none !important;z-index:2147483000 !important;padding-bottom: env(safe-area-inset-bottom, 0px) !important;}"
++ ".wrap{position:fixed !important;left:0 !important;right:0 !important;bottom: var(--evid-ios-bottom, 0px) !important;top:auto !important;width:100vw !important;max-width:100vw !important;margin:0 !important;padding:0 !important;display:flex !important;justify-content:center !important;box-sizing:border-box !important;pointer-events:none !important;z-index:2147483000 !important;padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important; !important;}"
 + ".wrap .card{pointer-events:auto !important;width:calc(100vw - 12px) !important;max-width:520px !important;margin:0 !important;border-radius:16px 16px 0 0 !important;}"
 + ".xbtn{top:10px !important;}"
 + "}"
