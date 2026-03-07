@@ -1035,7 +1035,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     // כוונון: כמה "להרים" כדי שלא ייחתך כשבר נעלם
     const RAISE_PX = 16;     // תנסה 8–14
     const MAX_DOWN_PX = 70;  // מגביל כמה למטה מותר "לרדת" (שלילי)
-const EXTRA_PAD_PX = 28; // תנסה 10–18 לפי מה שנוח
+const EXTRA_PAD_PX = 32; // תנסה 10–18 לפי מה שנוח
      
     const update = () => {
       raf = 0;
