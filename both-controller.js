@@ -1,4 +1,4 @@
-/* both-controller v5.1.8 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.2.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1024,16 +1024,26 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     if (!isiOS) return;
 
     const vv = window.visualViewport;
+     let barVVH = vv.height || 0; // baseline: גובה כשבר פתוח (קטן יותר)
     if (!vv) return;
 
     let raf = 0;
 
     const update = () => {
-      raf = 0;
-      // יכול להיות שלילי/חיובי — וזה בדיוק מה שאנחנו צריכים
-      const delta = (window.innerHeight - vv.height - (vv.offsetTop || 0));
-      wrapEl.style.setProperty("--evid-ios-bottom", Math.round(delta) + "px");
-    };
+  raf = 0;
+
+  const h = vv.height || 0;
+  if (!h) return;
+
+  // עדכון baseline רק לירידה "קטנה" (בר פתוח/סגור), לא מקלדת
+  const drop = barVVH - h;
+  if (h < barVVH && drop <= 140) barVVH = h;
+
+  // כשהבר נעלם: h גדל -> barVVH - h שלילי -> bottom שלילי -> יורד לתחתית החדשה
+  const shift = Math.min(0, barVVH - h);
+
+  wrapEl.style.setProperty("--evid-ios-bottom", Math.round(shift) + "px");
+};
 
     const schedule = () => {
       if (raf) return;
@@ -1047,6 +1057,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     window.addEventListener("orientationchange", () => setTimeout(update, 80));
+     setInterval(schedule, 250);
   } catch (_) {}
 }
 
