@@ -1027,6 +1027,10 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
     if (!vv) return;
 
     let raf = 0;
+     let lastSet = 0;          // הערך האחרון ששמנו ל--evid-ios-bottom
+const DEAD_PX = 2;        // מתחת לזה לא מזיזים (מונע קפיצות)
+const UPDATE_UP_PX = 10;  // מרווח ביטחון למעלה (8–14 לפי טעם)
+const MAX_ADJUST_PX = 160;
 
     const UPDATE_UP_PX = 10;     // תעלה/תרד פה אם צריך (6–14)
 const MAX_ADJUST_PX = 160;   // הגבלת בטיחות
@@ -1039,16 +1043,25 @@ const update = () => {
   const rect = wrapEl.getBoundingClientRect();
   if (!rect || rect.height < 10) return;
 
-  // gap > 0  => הווידג'ט "מרחף" למעלה (צריך לרדת)
-  // gap < 0  => הווידג'ט ירד יותר מדי (צריך לעלות)
-  const gap = vvH - rect.bottom;
+  // איפה אנחנו רוצים שהקצה התחתון יהיה (קצת מעל התחתית)
+  const desiredBottom = vvH - UPDATE_UP_PX;
 
-  // bottom חיובי מרים למעלה; שלילי מוריד למטה
-  let next = Math.round((-gap) + UPDATE_UP_PX);
+  // error>0 => הווידג'ט נמוך מדי (נחתך) => צריך לעלות => להגדיל bottom
+  // error<0 => הווידג'ט גבוה מדי (מרחף) => צריך לרדת => להקטין bottom (יותר שלילי)
+  const error = rect.bottom - desiredBottom;
 
-  // clamp כדי שלא נעשה קפיצות הזויות (keyboard וכו')
+  // deadband: אם אנחנו קרובים מספיק, לא נוגעים (מפסיק רעידות)
+  if (Math.abs(error) <= DEAD_PX) return;
+
+  let next = lastSet + Math.round(error);
+
+  // clamp בטיחות
   next = Math.max(-MAX_ADJUST_PX, Math.min(MAX_ADJUST_PX, next));
 
+  // אם השינוי קטן מדי, לא לעדכן
+  if (Math.abs(next - lastSet) <= 1) return;
+
+  lastSet = next;
   wrapEl.style.setProperty("--evid-ios-bottom", next + "px");
 };
     const schedule = () => {
