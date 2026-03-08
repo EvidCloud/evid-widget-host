@@ -1,4 +1,4 @@
-/* both-controller v5.2.0 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.2.91 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -1004,13 +1004,12 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 + ".wrap .card{pointer-events:auto !important;width:calc(100vw - 12px) !important;max-width:520px !important;margin:0 !important;border-radius:16px 16px 0 0 !important;}"
 + ".wrap{overflow: visible !important;}"
 + ".xbtn{top:10px !important;}"
-+ "}"
 + ".user-pill{flex:1;min-width:0;overflow:hidden;}"
 + ".name-col{min-width:0;overflow:hidden;}"
 + ".reviewer-name{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
 + ".reviewer-name.len-15{font-size:12px !important; line-height:1.15 !important;}"
 + ".reviewer-name.len-24{font-size:10.8px !important; line-height:1.12 !important;}"
-
++ "}"
        
       ;
       ;    root.appendChild(style);
