@@ -2014,12 +2014,12 @@ if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
 
 brandLink.innerHTML = isRTL
   ? `
-      <img class="evid-brand-logo" src="https://i.ibb.co/6JR8ysNk/logo-Green-Tiny-Png.png" alt="EVID" />
+      <img class="evid-brand-logo" src="https://i.postimg.cc/VLtH3xjT/Teyvo_Green_Png.png" alt="EVID" /> 
       <span class="evid-powered-text">Powered by</span>
     `
   : `
       <span class="evid-powered-text">Powered by</span>
-      <img class="evid-brand-logo" src="https://i.ibb.co/6JR8ysNk/logo-Green-Tiny-Png.png" alt="EVID" />
+      <img class="evid-brand-logo" src="https://i.postimg.cc/VLtH3xjT/Teyvo_Green_Png.png" alt="EVID" />
     `;
   // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
