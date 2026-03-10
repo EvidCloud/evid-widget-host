@@ -978,11 +978,11 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
       
       + ".evid-powered-text { font-size: 10px; color: #2E2E2E; margin-inline-end: 2px; }" 
       + ".evid-logo-text { font-weight: 800; font-size: 12px; letter-spacing: 0.5px; color: " + THEME_COLOR + "; font-family: 'Rubik', sans-serif; }"
-      + ".evid-mini-icon { width: 22px; height: 22px; display: inline-block; }"
+      + ".evid-mini-icon { width: 18px; height: 18px; display: inline-block; }"
 + ".card.style-default .evid-mini-icon, .card.style-forest .evid-mini-icon, .card.style-leaf .evid-mini-icon{ position: relative; top: 6px; }"
        + ".card.style-default.has-readmore .evid-mini-icon, .card.style-forest.has-readmore .evid-mini-icon, .card.style-leaf.has-readmore .evid-mini-icon{ top: 8px !important; }"
-       + ".evid-brand-logo { height: 30px; width: auto; display: block; }"
-+ ".card.compact .evid-brand-logo { height: 30px; }"
+       + ".evid-brand-logo { height: 36px; width: auto; display: block; }"
++ ".card.compact .evid-brand-logo { height: 36px; }"
       // התאמות למצב כהה
       + ".card.style-forest .evid-logo-text { color: #fff; }"
       + ".card.style-forest .evid-powered-text { color: rgba(255,255,255,0.5); }"
