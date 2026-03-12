@@ -46,6 +46,14 @@
   }
 
   const scriptURL = getScriptURL();
+   function isPreviewMode() {
+  try {
+    if (typeof window !== "undefined" && window.EVID_PREVIEW === true) return true;
+    return !!(scriptURL && scriptURL.searchParams.get("preview") === "1");
+  } catch (_) {
+    return false;
+  }
+}
 
   const __WIDGET_ID__ = (function () {
     try {
@@ -354,22 +362,24 @@ function trackViewOncePerDay(tenantId) {
 async function loadBrandingFromServer(slugOrId) {
   try {
     const ORIGIN = apiOriginFromReviewsEp();
-    const __PREVIEW__ = (new URL(import.meta.url).searchParams.get("preview") === "1");
-    const __PREVIEW_QS__ = __PREVIEW__ ? "&preview=1" : "";
-     const url = `${ORIGIN}/api/tenant?action=public-widget-config&slug=${encodeURIComponent(slugOrId)}${__PREVIEW_QS__}`;
+const __PREVIEW__ = isPreviewMode();
+const __PREVIEW_QS__ = __PREVIEW__ ? "&preview=1" : "";
+const url = `${ORIGIN}/api/tenant?action=public-widget-config&slug=${encodeURIComponent(slugOrId)}${__PREVIEW_QS__}`;
 
-    const r = await fetch(url, { method: "GET" });
-    if (!r.ok) return false;
+const r = await fetch(url, { method: "GET" });
+if (!r.ok) return false;
 
-    const j = await r.json();
-        // If this slug is not allowed on this site – remove widget and stop
-    if (j && j.allowed === false) {
-      try {
-        const el = document.getElementById("reviews-widget");
-        if (el) el.remove();
-      } catch {}
-      return false;
-    }
+const j = await r.json();
+
+// In dashboard preview mode, bypass the normal live-site allowedOrigin block.
+// On real customer sites, keep the protection exactly as before.
+if (j && j.allowed === false && !__PREVIEW__) {
+  try {
+    const el = document.getElementById("reviews-widget");
+    if (el) el.remove();
+  } catch {}
+  return false;
+}
 
     const plan = String(j.plan || j.tier || "basic").toLowerCase().trim();
     const hb = (j.hideBranding ?? j?.settings?.hideBranding);
@@ -393,8 +403,7 @@ const widgetId = (__WIDGET_ID__ || "").trim();
     let ok = true;
 try {
   const key = (widgetId || CURRENT_SLUG || "").trim();
-  const isPreview = (new URL(import.meta.url).searchParams.get("preview") === "1");
-
+const isPreview = isPreviewMode();
   // סופרים צפייה רק אם זה לא preview
   if (key && !isPreview) trackViewOncePerDay(key);
 
