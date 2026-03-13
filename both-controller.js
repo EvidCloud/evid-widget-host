@@ -1,4 +1,4 @@
-/* both-controller v5.2.91 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
+/* both-controller v5.2.97 — STABLE + SEMANTIC PRO (BASIC DEFAULT):
    - Works with regular <script defer> (no type="module" required) using dynamic import()
    - Prevents "Firebase App already exists"
    - Aligns Firebase config with public/firebase-config.js
@@ -2014,7 +2014,7 @@ if (footerEl) footerEl.style.display = hasFooter ? "" : "none";
 if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
   const brandLink = document.createElement("a");
   brandLink.className = "evid-branding";
-  brandLink.href = "https://evid.co.il";
+  brandLink.href = "https://teyvo.io";
   brandLink.target = "_blank";
   brandLink.rel = "noopener noreferrer";
   brandLink.onclick = function (e) { e.stopPropagation(); };
@@ -2023,12 +2023,12 @@ if (typeof SHOW_BRANDING !== "undefined" && SHOW_BRANDING) {
 
 brandLink.innerHTML = isRTL
   ? `
-      <img class="evid-brand-logo" src="https://i.postimg.cc/x1rB8ff2/Teyvo-Green-Tiny-Png.png" alt="EVID" /> 
+      <img class="evid-brand-logo" src="https://i.postimg.cc/x1rB8ff2/Teyvo-Green-Tiny-Png.png" alt="Teyvo" /> 
       <span class="evid-powered-text">Powered by</span>
     `
   : `
       <span class="evid-powered-text">Powered by</span>
-      <img class="evid-brand-logo" src="https://i.postimg.cc/x1rB8ff2/Teyvo-Green-Tiny-Png.png" alt="EVID" />
+      <img class="evid-brand-logo" src="https://i.postimg.cc/x1rB8ff2/Teyvo-Green-Tiny-Png.png" alt="Teyvo" />
     `;
   // מכניסים את המיתוג שני לפוטר (והוא יידחף לקצה ההפוך עם CSS)
   footer.appendChild(brandLink);
