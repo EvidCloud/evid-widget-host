@@ -749,6 +749,7 @@ if (__EVID_IS_MOBILE__) {
 
     const SELECTED_FONT = DYNAMIC_SETTINGS.font;
     const WIDGET_POS = DYNAMIC_SETTINGS.position;
+     const LIFT_Y = Math.max(0, Math.min(80, parseInt((currentScript && currentScript.getAttribute("data-lift-y")) || "0", 10) || 0));
     const THEME_COLOR = DYNAMIC_SETTINGS.color;
     const MARKER_ENABLED = !!DYNAMIC_SETTINGS.marker;
     const BADGE_ENABLED = !!DYNAMIC_SETTINGS.badge;
@@ -2109,19 +2110,24 @@ brandLink.innerHTML = isRTL
     return;
   }
 
+  const baseOffset = 20;
+  const yOffset = Number.isFinite(LIFT_Y) ? LIFT_Y : 0;
+
   // === DESKTOP positioning ===
   wrap.style.top = "auto";
   wrap.style.bottom = "auto";
   wrap.style.left = "auto";
   wrap.style.right = "auto";
 
-  if (String(WIDGET_POS).includes("top")) wrap.style.top = "20px";
-  else wrap.style.bottom = "20px";
+  if (String(WIDGET_POS).includes("top")) {
+    wrap.style.top = Math.max(0, baseOffset - yOffset) + "px";
+  } else {
+    wrap.style.bottom = (baseOffset + yOffset) + "px";
+  }
 
   if (String(WIDGET_POS).includes("left")) wrap.style.left = "20px";
   else wrap.style.right = "20px";
 }
-
     function showNext(overrideDuration, preserveTimestamp) {
       if (!items.length || isDismissed) return;
       clearShowTimers();
