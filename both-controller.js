@@ -732,18 +732,17 @@ try {
 
     const TXT_LIVE = (currentScript && currentScript.getAttribute("data-live-text")) || "מבוקש עכשיו";
     const TXT_BOUGHT = (currentScript && currentScript.getAttribute("data-purchase-label")) || "רכש/ה";
+     const MOBILE_RAW = String((currentScript && currentScript.getAttribute("data-mobile")) || "on").toLowerCase().trim();
+const MOBILE_ENABLED = !["off", "false", "0", "no"].includes(MOBILE_RAW);
 
      // === MOBILE: force Classic (style-default) regardless of chosen design ===
 const __EVID_IS_MOBILE__ = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
 
+
+
 if (__EVID_IS_MOBILE__) {
-  // force classic
   DYNAMIC_SETTINGS.cardStyle = "default";
-
-  // remove compact/large differences on mobile (always large)
   DYNAMIC_SETTINGS.size = "large";
-
-  // ignore position settings on mobile (we'll stick to bottom via CSS)
   DYNAMIC_SETTINGS.position = "bottom-right";
 }
 
@@ -1020,6 +1019,7 @@ const slug = CURRENT_SLUG;       // optional safety if code also uses `slug`
 + ".reviewer-name.len-15{font-size:12px !important; line-height:1.15 !important;}"
 + ".reviewer-name.len-24{font-size:10.8px !important; line-height:1.12 !important;}"
 + "}"
++ (!MOBILE_ENABLED ? "@media (max-width: 480px){.wrap{display:none !important;}}" : "")
        
       ;
       ;    root.appendChild(style);
